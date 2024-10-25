@@ -10,7 +10,7 @@ class CrudApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'crud_1',
+      title: 'Test CRUD',
       home: NotesScreen(),
     );
   }
@@ -79,6 +79,7 @@ class _NotesScreenState extends State<NotesScreen> {
       builder: (context) => AlertDialog(
         title: Text('Edit Note'),
         content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: _titleController,
@@ -112,7 +113,10 @@ class _NotesScreenState extends State<NotesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('crud_1')),
+      appBar: AppBar(
+        title: Text('Test CRUD'),
+        backgroundColor: Colors.blue,
+      ),
       body: Column(
         children: [
           Padding(
