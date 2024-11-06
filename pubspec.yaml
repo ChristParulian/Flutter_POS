@@ -1,4 +1,4 @@
-name: crud_1
+name: smarttoko
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
@@ -9,9 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_native_splash: ^2.2.19
   sqflite: ^2.0.0+3
   path: ^1.8.0
-
 
   cupertino_icons: ^1.0.8
 
@@ -22,3 +22,12 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/logo.png
+
+flutter_native_splash:
+  color: "#ffffff"  # Warna latar belakang splash screen
+  image: assets/images/logo.png  # Path logo yang akan ditampilkan di splash screen
+  android: true  # Mengaktifkan splash screen untuk Android
+  ios: true  # Mengaktifkan splash screen untuk iOS
+  fill: true  # Mengisi layar dengan logo, atau gunakan 'preserve' untuk ukuran asli
