@@ -2,7 +2,9 @@ class Kategori {
   int? id;
   String namaKategori;
 
-  Kategori({this.id, required this.namaKategori});
+  Kategori({
+    this.id,
+    required this.namaKategori});
 
   // Mengubah objek Kategori menjadi Map untuk disimpan di database
   Map<String, dynamic> toMap() {

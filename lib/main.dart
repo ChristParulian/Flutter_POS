@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'controllers/produk_controller.dart';
 import 'controllers/kategori_controller.dart';
-import 'views/kategori_view.dart'; // Import kategori view
+import 'views/produk_view.dart';
+import 'views/kategori_view.dart';
 
 void main() {
   runApp(MyApp());
@@ -10,14 +12,22 @@ void main() {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => KategoriController()..loadKategori(), // Memuat kategori saat aplikasi dimulai
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<KategoriController>(
+          create: (context) => KategoriController()..loadKategori(),
+        ),
+        ChangeNotifierProvider<ProdukController>(
+          create: (context) => ProdukController()..loadProduk(),
+        ),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        initialRoute: '/', // Set initial route ke halaman menu
+        initialRoute: '/',
         routes: {
-          '/': (context) => MenuPage(), // Halaman menu utama
-          '/kategori': (context) => KategoriView(), // Halaman kategori
+          '/': (context) => MenuPage(),
+          '/kategori': (context) => KategoriView(),
+          '/produk': (context) => ProdukView(),
         },
       ),
     );
@@ -28,9 +38,7 @@ class MenuPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Menu Utama'),
-      ),
+      appBar: AppBar(title: Text('Menu Utama')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -38,12 +46,16 @@ class MenuPage extends StatelessWidget {
           children: <Widget>[
             ElevatedButton(
               onPressed: () {
-                // Routing ke halaman kategori
                 Navigator.pushNamed(context, '/kategori');
               },
               child: Text('Kelola Kategori'),
             ),
-            // Bisa ditambahkan menu lainnya nanti seperti produk, penjualan, dsb.
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/produk');
+              },
+              child: Text('Kelola Produk'),
+            ),
           ],
         ),
       ),

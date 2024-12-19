@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/kategori.dart';
+import '../models/produk.dart';
 
 class DatabaseHelper {
   static Database? _database;
@@ -16,12 +17,22 @@ class DatabaseHelper {
 
   static _initDatabase() async {
     var path = await getDatabasesPath();
-    var dbPath = join(path, 'kategori.db');
+    var dbPath = join(path, 'kategori_produk.db');
     return await openDatabase(dbPath, version: 1, onCreate: (db, version) async {
       await db.execute('''
         CREATE TABLE kategori (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           namaKategori TEXT
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE produk (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          namaProduk TEXT,
+          harga REAL,
+          kategoriId INTEGER,
+          FOREIGN KEY (kategoriId) REFERENCES kategori (id)
         )
       ''');
     });
@@ -56,6 +67,38 @@ class DatabaseHelper {
       kategori.toMap(),
       where: 'id = ?',
       whereArgs: [kategori.id],
+    );
+  }
+
+  // Fungsi untuk menambah produk
+  static Future<int> addProduk(Produk produk) async {
+    final db = await database;
+    return await db.insert('produk', produk.toMap());
+  }
+
+  // Fungsi untuk menghapus produk
+  static Future<int> deleteProduk(int id) async {
+    final db = await database;
+    return await db.delete('produk', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // Fungsi untuk mendapatkan daftar produk
+  static Future<List<Produk>> getProduk() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('produk');
+    return List.generate(maps.length, (i) {
+      return Produk.fromMap(maps[i]);
+    });
+  }
+
+  // Fungsi untuk mengupdate produk
+  static Future<int> updateProduk(Produk produk) async {
+    final db = await database;
+    return await db.update(
+      'produk',
+      produk.toMap(),
+      where: 'id = ?',
+      whereArgs: [produk.id],
     );
   }
 }
