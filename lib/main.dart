@@ -4,6 +4,7 @@ import 'controllers/produk_controller.dart';
 import 'controllers/kategori_controller.dart';
 import 'views/produk_view.dart';
 import 'views/kategori_view.dart';
+import 'views/keranjang_view.dart'; // Pastikan untuk import KeranjangView
 
 void main() {
   runApp(MyApp());
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
           '/': (context) => MenuPage(),
           '/kategori': (context) => KategoriView(),
           '/produk': (context) => ProdukView(),
+          '/keranjang': (context) => KeranjangView(), // Tambahkan routing ke KeranjangView
         },
       ),
     );
@@ -55,6 +57,12 @@ class MenuPage extends StatelessWidget {
                 Navigator.pushNamed(context, '/produk');
               },
               child: Text('Kelola Produk'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/keranjang'); // Navigasi ke Keranjang
+              },
+              child: Text('Kelola Keranjang'), // Button untuk Kelola Keranjang
             ),
           ],
         ),
