@@ -5,7 +5,7 @@ POS_Flutter is a simple Point of Sale (POS) application built with Flutter for t
 ## Features
 
 - **Product Management**: Add, edit, and delete products.
-- **Transaction Management**: Process sales, calculate totals, and apply discounts.
+- **Transaction Management**: Process sales, calculate totals.
 - **User-Friendly Interface**: Simple and intuitive UI for easy usage in a retail or small business environment.
 - **Responsive Design**: Works well on both Android and iOS devices.
 
