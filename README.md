@@ -9,11 +9,6 @@ POS_Flutter is a simple Point of Sale (POS) application built with Flutter for t
 - **User-Friendly Interface**: Simple and intuitive UI for easy usage in a retail or small business environment.
 - **Responsive Design**: Works well on both Android and iOS devices.
 
-## Screenshots
-
-![POS Flutter Screenshot](https://via.placeholder.com/600x400)  
-*Insert app screenshots here*
-
 ## Requirements
 
 To run this project, you will need:
