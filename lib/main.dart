@@ -4,7 +4,7 @@ import 'controllers/produk_controller.dart';
 import 'controllers/kategori_controller.dart';
 import 'views/produk_view.dart';
 import 'views/kategori_view.dart';
-import 'views/keranjang_view.dart'; // Pastikan untuk import KeranjangView
+import 'views/keranjang_view.dart';
 
 void main() {
   runApp(MyApp());
