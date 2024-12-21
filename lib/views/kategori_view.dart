@@ -60,17 +60,17 @@ class _KategoriViewState extends State<KategoriView> {
                           children: [
                             // Tombol Edit
                             IconButton(
-                              icon: Icon(Icons.edit),
+                              icon: Icon(Icons.edit, color: Colors.blue),
                               onPressed: () {
                                 _controller.text = kategori.namaKategori;
                                 _showUpdateDialog(context, kategori);
                               },
                             ),
-                            // Tombol Delete
+                            // Tombol Delete dengan dialog konfirmasi
                             IconButton(
-                              icon: Icon(Icons.delete),
+                              icon: Icon(Icons.delete, color: Colors.red),
                               onPressed: () {
-                                kategoriController.deleteKategori(kategori.id!);
+                                _showDeleteDialog(context, kategori);
                               },
                             ),
                           ],
@@ -106,6 +106,9 @@ class _KategoriViewState extends State<KategoriView> {
                   Kategori kategori = Kategori(namaKategori: kategoriName);
                   Provider.of<KategoriController>(context, listen: false)
                       .addKategori(kategori);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Kategori berhasil ditambahkan!')),
+                  );
                   _controller.clear();
                   Navigator.pop(context);
                 }
@@ -145,6 +148,9 @@ class _KategoriViewState extends State<KategoriView> {
                   kategori.namaKategori = kategoriName;
                   Provider.of<KategoriController>(context, listen: false)
                       .updateKategori(kategori);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Kategori berhasil diperbarui!')),
+                  );
                   _controller.clear();
                   Navigator.pop(context);
                 }
@@ -157,6 +163,38 @@ class _KategoriViewState extends State<KategoriView> {
                 _controller.clear();
               },
               child: Text('Batal'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Dialog untuk menghapus kategori
+  void _showDeleteDialog(BuildContext context, Kategori kategori) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Hapus Kategori'),
+          content: Text('Apakah Anda yakin ingin menghapus kategori ini?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text('Batal'),
+            ),
+            TextButton(
+              onPressed: () {
+                Provider.of<KategoriController>(context, listen: false)
+                    .deleteKategori(kategori.id!);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Kategori berhasil dihapus!')),
+                );
+                Navigator.pop(context);
+              },
+              child: Text('Hapus'),
             ),
           ],
         );
