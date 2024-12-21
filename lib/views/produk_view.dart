@@ -5,7 +5,14 @@ import '../controllers/kategori_controller.dart';
 import '../models/produk.dart';
 import '../models/kategori.dart';
 
-class ProdukView extends StatelessWidget {
+class ProdukView extends StatefulWidget {
+  @override
+  _ProdukViewState createState() => _ProdukViewState();
+}
+
+class _ProdukViewState extends State<ProdukView> {
+  int? _selectedKategoriId; // Menyimpan ID kategori yang dipilih (null untuk 'All')
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,26 +34,69 @@ class ProdukView extends StatelessWidget {
                 child: Text('Tambah Produk'),
               ),
             ),
-            SizedBox(height: 16.0), // Memberikan jarak antara tombol dan daftar produk
+            SizedBox(height: 16.0),
+
+            // Dropdown untuk filter kategori
+            Consumer<KategoriController>(
+              builder: (context, kategoriController, child) {
+                return DropdownButtonFormField<int?>(
+                  value: _selectedKategoriId,
+                  decoration: InputDecoration(labelText: 'Filter Kategori'),
+                  onChanged: (int? newValue) {
+                    setState(() {
+                      _selectedKategoriId = newValue;
+                    });
+                  },
+                  items: [
+                    DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('All'), // Opsi untuk menampilkan semua produk
+                    ),
+                    ...kategoriController.kategoriList.map(
+                          (kategori) => DropdownMenuItem<int?>(
+                        value: kategori.id,
+                        child: Text(kategori.namaKategori),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            SizedBox(height: 16.0), // Jarak antara dropdown dan daftar produk
 
             // Daftar Produk
             Expanded(
               child: Consumer<ProdukController>(
                 builder: (context, produkController, child) {
                   if (produkController.produkList.isEmpty) {
-                    return Center(child: CircularProgressIndicator());
+                    return Center(child: Text('Tidak ada produk.'));
                   }
 
                   return Consumer<KategoriController>(
                     builder: (context, kategoriController, child) {
+                      // Filter produk berdasarkan kategori yang dipilih
+                      List<Produk> filteredProdukList = _selectedKategoriId == null
+                          ? produkController.produkList
+                          : produkController.produkList.where((produk) {
+                        return produk.kategoriId == _selectedKategoriId;
+                      }).toList();
+
+                      if (filteredProdukList.isEmpty) {
+                        return Center(
+                          child: Text('Tidak ada produk untuk kategori yang dipilih.'),
+                        );
+                      }
+
                       return ListView.builder(
-                        itemCount: produkController.produkList.length,
+                        itemCount: filteredProdukList.length,
                         itemBuilder: (context, index) {
-                          Produk produk = produkController.produkList[index];
+                          Produk produk = filteredProdukList[index];
                           String kategoriNama = kategoriController.kategoriList.firstWhere(
                                 (kategori) => kategori.id == produk.kategoriId,
-                            orElse: () =>
-                                Kategori(id: -1, namaKategori: 'Kategori Tidak Ditemukan'),
+                            orElse: () => Kategori(
+                              id: -1,
+                              namaKategori: 'Kategori Tidak Ditemukan',
+                            ),
                           ).namaKategori;
 
                           return Card(
@@ -75,8 +125,7 @@ class ProdukView extends StatelessWidget {
                                         builder: (context) {
                                           return AlertDialog(
                                             title: Text('Konfirmasi Hapus'),
-                                            content:
-                                            Text('Apakah Anda yakin ingin menghapus produk ini?'),
+                                            content: Text('Apakah Anda yakin ingin menghapus produk ini?'),
                                             actions: [
                                               TextButton(
                                                 onPressed: () {
@@ -97,6 +146,11 @@ class ProdukView extends StatelessWidget {
 
                                       if (confirmDelete == true) {
                                         await produkController.deleteProduk(produk.id!);
+
+                                        // Menampilkan pesan setelah produk dihapus
+                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                          content: Text('Produk berhasil dihapus!'),
+                                        ));
                                       }
                                     },
                                   ),
@@ -210,13 +264,11 @@ class ProdukView extends StatelessWidget {
     );
   }
 
-  // Dialog Edit Produk (Sama seperti sebelumnya)
+  // Dialog Edit Produk
   void _showEditProdukDialog(
       BuildContext context, Produk produk, KategoriController kategoriController) {
-    final TextEditingController namaController =
-    TextEditingController(text: produk.namaProduk);
-    final TextEditingController hargaController =
-    TextEditingController(text: produk.harga.toString());
+    final TextEditingController namaController = TextEditingController(text: produk.namaProduk);
+    final TextEditingController hargaController = TextEditingController(text: produk.harga.toString());
     int? selectedKategoriId = produk.kategoriId;
 
     showDialog(
@@ -244,20 +296,24 @@ class ProdukView extends StatelessWidget {
                 SizedBox(height: 8.0),
 
                 // Dropdown Kategori
-                DropdownButtonFormField<int>(
-                  value: selectedKategoriId,
-                  decoration: InputDecoration(labelText: 'Pilih Kategori'),
-                  onChanged: (int? newKategoriId) {
-                    selectedKategoriId = newKategoriId;
+                Consumer<KategoriController>(
+                  builder: (context, kategoriController, child) {
+                    return DropdownButtonFormField<int>(
+                      value: selectedKategoriId,
+                      decoration: InputDecoration(labelText: 'Pilih Kategori'),
+                      onChanged: (int? newKategoriId) {
+                        selectedKategoriId = newKategoriId;
+                      },
+                      items: kategoriController.kategoriList
+                          .map<DropdownMenuItem<int>>(
+                            (kategori) => DropdownMenuItem<int>(
+                          value: kategori.id,
+                          child: Text(kategori.namaKategori),
+                        ),
+                      )
+                          .toList(),
+                    );
                   },
-                  items: kategoriController.kategoriList
-                      .map<DropdownMenuItem<int>>(
-                        (kategori) => DropdownMenuItem<int>(
-                      value: kategori.id,
-                      child: Text(kategori.namaKategori),
-                    ),
-                  )
-                      .toList(),
                 ),
               ],
             ),
@@ -276,15 +332,14 @@ class ProdukView extends StatelessWidget {
 
                 if (namaProduk.isNotEmpty && hargaProduk > 0 && selectedKategoriId != null) {
                   Produk updatedProduk = Produk(
-                    id: produk.id,
+                    id: produk.id,  // Menjaga ID produk yang sama
                     namaProduk: namaProduk,
                     kategoriId: selectedKategoriId!,
                     harga: hargaProduk,
                   );
 
                   // Update produk melalui controller
-                  await Provider.of<ProdukController>(context, listen: false)
-                      .updateProduk(updatedProduk);
+                  await Provider.of<ProdukController>(context, listen: false).updateProduk(updatedProduk);
 
                   Navigator.of(context).pop(); // Tutup dialog
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
