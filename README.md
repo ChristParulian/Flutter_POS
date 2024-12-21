@@ -1,16 +1,30 @@
-# pos_flutter
+# POS_Flutter
 
-POS_Flutter
+POS_Flutter is a simple Point of Sale (POS) application built with Flutter for the final project of a course or academic requirement. The app allows users to manage products, process transactions, and handle basic sales operations.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- **Product Management**: Add, edit, and delete products.
+- **Transaction Management**: Process sales, calculate totals, and apply discounts.
+- **User-Friendly Interface**: Simple and intuitive UI for easy usage in a retail or small business environment.
+- **Responsive Design**: Works well on both Android and iOS devices.
 
-A few resources to get you started if this is your first Flutter project:
+## Screenshots
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+![POS Flutter Screenshot](https://via.placeholder.com/600x400)  
+*Insert app screenshots here*
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Requirements
+
+To run this project, you will need:
+
+- [Flutter](https://flutter.dev/docs/get-started/install) SDK installed.
+- A device/emulator to run the app.
+
+## Installation
+
+1. Clone this repository to your local machine:
+
+   ```bash
+   git clone https://github.com/yourusername/POS_Flutter.git
+
