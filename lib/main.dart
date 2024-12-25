@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'controllers/produk_controller.dart';
 import 'controllers/kategori_controller.dart';
+import 'controllers/keranjang_controller.dart'; // Tambahkan controller untuk keranjang
 import 'views/produk_view.dart';
 import 'views/kategori_view.dart';
 import 'views/keranjang_view.dart';
+import 'views/checkout_view.dart'; // Import CheckoutView
 
 void main() {
   runApp(MyApp());
@@ -21,6 +23,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<ProdukController>(
           create: (context) => ProdukController()..loadProduk(),
         ),
+        ChangeNotifierProvider<KeranjangController>( // Tambahkan provider untuk KeranjangController
+          create: (context) => KeranjangController(),
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -29,7 +34,8 @@ class MyApp extends StatelessWidget {
           '/': (context) => MenuPage(),
           '/kategori': (context) => KategoriView(),
           '/produk': (context) => ProdukView(),
-          '/keranjang': (context) => KeranjangView(), // Tambahkan routing ke KeranjangView
+          '/keranjang': (context) => KeranjangView(),
+          '/checkout': (context) => CheckoutView(), // Routing untuk CheckoutView
         },
       ),
     );

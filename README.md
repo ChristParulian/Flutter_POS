@@ -21,5 +21,5 @@ To run this project, you will need:
 1. Clone this repository to your local machine:
 
    ```bash
-   git clone https://github.com/yourusername/POS_Flutter.git
+   git clone https://github.com/ChristParulian/POS_Flutter.git
 
