@@ -17,6 +17,11 @@ class KeranjangController with ChangeNotifier {
     notifyListeners();
   }
 
+  // Metode untuk menghapus item dari keranjang
+  void hapusDariKeranjang(int idProduk) {
+    _keranjangList.removeWhere((item) => item.id == idProduk);
+    notifyListeners(); // Memberitahukan perubahan kepada listener
+  }
 
   double get totalHarga => _keranjangList.fold(0, (total, item) => total + item.totalHarga);
   int get totalItem => _keranjangList.fold(0, (count, item) => count + item.jumlah);

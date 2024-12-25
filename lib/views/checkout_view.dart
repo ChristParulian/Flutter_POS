@@ -23,7 +23,14 @@ class CheckoutView extends StatelessWidget {
                 final item = keranjangController.keranjangList[index];
                 return ListTile(
                   title: Text(item.namaProduk),
-                  subtitle: Text('Qty: ${item.jumlah} - \$${item.totalHarga.toStringAsFixed(2)}')
+                  subtitle: Text('Qty: ${item.jumlah} - \$${item.totalHarga.toStringAsFixed(2)}'),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete, color: Colors.red),
+                    onPressed: () {
+                      // Memanggil fungsi hapusDariKeranjang di controller
+                      keranjangController.hapusDariKeranjang(item.id);
+                    },
+                  ),
                 );
               },
             ),
@@ -31,15 +38,15 @@ class CheckoutView extends StatelessWidget {
           // Bagian total harga dan tombol checkout
           Padding(
             padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Total: \$${keranjangController.totalHarga.toStringAsFixed(2)} - Checkout',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+            child: Text(
+              'Total: \$${keranjangController.totalHarga.toStringAsFixed(2)} - Checkout',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
+          ),
         ],
       ),
     );
