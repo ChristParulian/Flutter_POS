@@ -13,8 +13,10 @@ dependencies:
   sqflite: ^2.0.0+4
   path: ^1.8.1
   provider: ^6.0.4
+  path_provider: ^2.0.11
   cupertino_icons: ^1.0.8
   intl: ^0.18.0
+  json_annotation: ^4.6.0
 
 
 dev_dependencies:

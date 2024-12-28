@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../controllers/keranjang_controller.dart';
 import '../controllers/penjualan_controller.dart';
-import '../models/keranjang.dart';
 
 class CheckoutView extends StatefulWidget {
   @override
@@ -93,15 +92,17 @@ class _CheckoutViewState extends State<CheckoutView> {
             child: ElevatedButton(
               onPressed: () {
                 if (kembalian >= 0) {
+                  // Simpan penjualan dan data keranjang ke file JSON
                   penjualanController.simpanPenjualan(
                     keranjangController.keranjangList,
                     keranjangController.totalHarga,
                     double.parse(bayarController.text),
                     kembalian,
                   );
-                  keranjangController.keranjangList.clear();
-                  keranjangController.notifyListeners();
-                  Navigator.pop(context);
+                  keranjangController.keranjangList.clear(); // Bersihkan keranjang
+                  keranjangController.notifyListeners(); // Memberitahu bahwa keranjang telah diperbarui
+                  penjualanController.simpanPenjualanKeFile(); // Pastikan penjualan disimpan
+                  Navigator.pop(context); // Kembali ke halaman sebelumnya
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout Berhasil!')));
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Jumlah dibayar kurang!')));
