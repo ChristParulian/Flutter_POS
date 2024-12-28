@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../controllers/keranjang_controller.dart';
 import 'package:intl/intl.dart';
+import '../controllers/keranjang_controller.dart';
+import '../controllers/penjualan_controller.dart';
+import '../models/keranjang.dart';
 
 class CheckoutView extends StatefulWidget {
   @override
@@ -16,6 +17,7 @@ class _CheckoutViewState extends State<CheckoutView> {
   @override
   Widget build(BuildContext context) {
     var keranjangController = Provider.of<KeranjangController>(context);
+    var penjualanController = Provider.of<PenjualanController>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -63,9 +65,6 @@ class _CheckoutViewState extends State<CheckoutView> {
                 TextField(
                   controller: bayarController,
                   keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly, // Batasi input hanya angka
-                  ],
                   decoration: InputDecoration(
                     labelText: 'Jumlah Dibayar',
                     border: OutlineInputBorder(),
@@ -94,16 +93,18 @@ class _CheckoutViewState extends State<CheckoutView> {
             child: ElevatedButton(
               onPressed: () {
                 if (kembalian >= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Checkout Berhasil!')),
+                  penjualanController.simpanPenjualan(
+                    keranjangController.keranjangList,
+                    keranjangController.totalHarga,
+                    double.parse(bayarController.text),
+                    kembalian,
                   );
                   keranjangController.keranjangList.clear();
                   keranjangController.notifyListeners();
                   Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout Berhasil!')));
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Jumlah dibayar kurang!')),
-                  );
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Jumlah dibayar kurang!')));
                 }
               },
               child: Text('Selesaikan Checkout'),
