@@ -12,11 +12,15 @@ class PenjualanView extends StatefulWidget {
 }
 
 class _PenjualanViewState extends State<PenjualanView> {
+  TextEditingController _searchController = TextEditingController();
+  List<Penjualan> filteredPenjualan = [];
+
   @override
   void initState() {
     super.initState();
     var penjualanController = Provider.of<PenjualanController>(context, listen: false);
     penjualanController.muatPenjualanDariFile();
+    filteredPenjualan = penjualanController.daftarPenjualan; // Menyimpan daftar penjualan yang sudah dimuat
   }
 
   @override
@@ -25,149 +29,214 @@ class _PenjualanViewState extends State<PenjualanView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Daftar Penjualan'),
-        backgroundColor: Colors.teal,
+        title: Text(
+          'Daftar Penjualan',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.amber,
       ),
-      body: penjualanController.daftarPenjualan.isEmpty
-          ? Center(child: Text('Belum ada penjualan.'))
-          : ListView.builder(
-        itemCount: penjualanController.daftarPenjualan.length,
-        itemBuilder: (context, index) {
-          final penjualan = penjualanController.daftarPenjualan[index];
-          return Card(
-            margin: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
-            child: ExpansionTile(
-              title: Text('Tanggal: ${penjualan.formattedTanggal}'),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Total Harga: Rp${penjualan.totalHarga.toStringAsFixed(2)}'),
-                  Text('Jumlah Dibayar: Rp${penjualan.jumlahDibayar.toStringAsFixed(2)}'),
-                  Text('Kembalian: Rp${penjualan.kembalian.toStringAsFixed(2)}'),
-                ],
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (query) {
+                _filterPenjualan(query, penjualanController);
+              },
+              decoration: InputDecoration(
+                labelText: 'Cari Penjualan',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          ),
+          Expanded(
+            child: filteredPenjualan.isEmpty
+                ? Center(
+              child: Text(
+                'Belum ada penjualan.',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            )
+                : ListView.builder(
+              itemCount: filteredPenjualan.length,
+              padding: EdgeInsets.all(16),
+              itemBuilder: (context, index) {
+                final penjualan = filteredPenjualan[index];
+                return Card(
+                  margin: EdgeInsets.symmetric(vertical: 10),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ExpansionTile(
+                    title: Text(
+                      'Tanggal: ${penjualan.formattedTanggal}',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Total Harga: Rp${penjualan.totalHarga.toStringAsFixed(2)}'),
+                        Text('Jumlah Dibayar: Rp${penjualan.jumlahDibayar.toStringAsFixed(2)}'),
+                        Text('Kembalian: Rp${penjualan.kembalian.toStringAsFixed(2)}'),
+                      ],
+                    ),
+                    iconColor: Colors.amber,
+                    textColor: Colors.black87,
                     children: [
-                      Text(
-                        'Detail Produk:',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        itemCount: penjualan.daftarProduk.length,
-                        itemBuilder: (context, itemIndex) {
-                          final produk = penjualan.daftarProduk[itemIndex];
-                          return ListTile(
-                            title: Text(produk.namaProduk),
-                            subtitle: Text(
-                              'Qty: ${produk.jumlah} - Rp${produk.totalHarga.toStringAsFixed(2)}',
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Detail Produk:',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
-                          );
-                        },
-                      ),
-                      SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: () {
-                          penjualanController.daftarPenjualan.removeAt(index);
-                          penjualanController.simpanPenjualanKeFile();
-                          penjualanController.notifyListeners();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Penjualan berhasil dihapus')),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          padding: EdgeInsets.symmetric(vertical: 12.0),
-                        ),
-                        child: Text(
-                          'Hapus Penjualan',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: () {
-                          _printPenjualan(penjualan);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: EdgeInsets.symmetric(vertical: 12.0),
-                        ),
-                        child: Text(
-                          'Cetak Penjualan',
-                          style: TextStyle(color: Colors.white),
+                            Divider(color: Colors.amber.shade300),
+                            ListView.builder(
+                              shrinkWrap: true,
+                              physics: NeverScrollableScrollPhysics(),
+                              itemCount: penjualan.daftarProduk.length,
+                              itemBuilder: (context, itemIndex) {
+                                final produk = penjualan.daftarProduk[itemIndex];
+                                return ListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  title: Text(produk.namaProduk),
+                                  subtitle: Text('Qty: ${produk.jumlah} - Rp${produk.totalHarga.toStringAsFixed(2)}'),
+                                );
+                              },
+                            ),
+                            SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      penjualanController.daftarPenjualan.removeAt(index);
+                                      penjualanController.simpanPenjualanKeFile();
+                                      penjualanController.notifyListeners();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Penjualan berhasil dihapus')),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      padding: EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Text('Hapus', style: TextStyle(color: Colors.white)),
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      _printPenjualan(penjualan);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      padding: EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Text('Cetak', style: TextStyle(color: Colors.white)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
+  }
+
+  void _filterPenjualan(String query, PenjualanController penjualanController) {
+    if (query.isEmpty) {
+      setState(() {
+        filteredPenjualan = penjualanController.daftarPenjualan;
+      });
+    } else {
+      setState(() {
+        filteredPenjualan = penjualanController.daftarPenjualan.where((penjualan) {
+          return penjualan.formattedTanggal.toLowerCase().contains(query.toLowerCase()) ||
+              penjualan.daftarProduk.any((produk) => produk.namaProduk.toLowerCase().contains(query.toLowerCase()));
+        }).toList();
+      });
+    }
   }
 
   void _printPenjualan(Penjualan penjualan) async {
     final pdf = pw.Document();
 
+    // Ukuran kertas thermal: 58mm (2.28 inches)
+    final pageFormat = PdfPageFormat(58 * PdfPageFormat.mm, double.infinity, marginAll: 5);
+
     pdf.addPage(
       pw.Page(
+        pageFormat: pageFormat,
         build: (pw.Context context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               // Header
-              pw.Text('Laporan Penjualan', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 10),
-              pw.Text('Tanggal Penjualan: ${penjualan.formattedTanggal}', style: pw.TextStyle(fontSize: 14)),
-              pw.SizedBox(height: 10),
+              pw.Text('Struk Belanja', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 5),
+              pw.Text('Tanggal: ${penjualan.formattedTanggal}', style: pw.TextStyle(fontSize: 9)),
               pw.Divider(),
-              pw.SizedBox(height: 10),
-
-              // Detail Produk (Di atas)
-              pw.Text('Detail Produk:', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 10),
+              // Detail Produk
+              pw.Text('Detail Produk:', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
               ...penjualan.daftarProduk.map(
                     (produk) => pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
-                    pw.Text(produk.namaProduk, style: pw.TextStyle(fontSize: 14)),
-                    pw.Text('Qty: ${produk.jumlah}', style: pw.TextStyle(fontSize: 14)),
-                    pw.Text('Rp${produk.totalHarga.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14)),
+                    pw.Text(produk.namaProduk, style: pw.TextStyle(fontSize: 7)),
+                    pw.Text('Qty: ${produk.jumlah}', style: pw.TextStyle(fontSize: 7)),
+                    pw.Text('Rp${produk.totalHarga.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 7)),
                   ],
                 ),
               ).toList(),
-              pw.SizedBox(height: 10),
               pw.Divider(),
-              pw.SizedBox(height: 10),
-
-              // Informasi Penjualan (Setelah Detail Produk)
+              // Informasi Penjualan
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('Total Harga:', style: pw.TextStyle(fontSize: 14)),
-                  pw.Text('Rp${penjualan.totalHarga.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14)),
+                  pw.Text('Total:', style: pw.TextStyle(fontSize: 8)),
+                  pw.Text('Rp${penjualan.totalHarga.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8)),
                 ],
               ),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('Jumlah Dibayar:', style: pw.TextStyle(fontSize: 14)),
-                  pw.Text('Rp${penjualan.jumlahDibayar.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14)),
+                  pw.Text('Dibayar:', style: pw.TextStyle(fontSize: 8)),
+                  pw.Text('Rp${penjualan.jumlahDibayar.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8)),
                 ],
               ),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('Kembalian:', style: pw.TextStyle(fontSize: 14)),
-                  pw.Text('Rp${penjualan.kembalian.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14)),
+                  pw.Text('Kembali:', style: pw.TextStyle(fontSize: 8)),
+                  pw.Text('Rp${penjualan.kembalian.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8)),
                 ],
               ),
               pw.SizedBox(height: 20),
