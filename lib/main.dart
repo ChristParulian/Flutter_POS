@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'controllers/produk_controller.dart';
 import 'controllers/kategori_controller.dart';
-import 'controllers/keranjang_controller.dart'; // Tambahkan controller untuk keranjang
-import 'controllers/penjualan_controller.dart'; // Tambahkan PenjualanController untuk mengelola transaksi
+import 'controllers/keranjang_controller.dart';
+import 'controllers/penjualan_controller.dart';
 import 'views/produk_view.dart';
 import 'views/kategori_view.dart';
 import 'views/keranjang_view.dart';
-import 'views/checkout_view.dart'; // Import CheckoutView
-import 'views/penjualan_view.dart'; // Import PenjualanView
+import 'views/checkout_view.dart';
+import 'views/penjualan_view.dart';
 
 void main() {
   runApp(MyApp());
@@ -25,23 +25,23 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<ProdukController>(
           create: (context) => ProdukController()..loadProduk(),
         ),
-        ChangeNotifierProvider<KeranjangController>( // Provider untuk KeranjangController
+        ChangeNotifierProvider<KeranjangController>(
           create: (context) => KeranjangController(),
         ),
-        ChangeNotifierProvider<PenjualanController>( // Provider untuk PenjualanController
+        ChangeNotifierProvider<PenjualanController>(
           create: (context) => PenjualanController(),
         ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        initialRoute: '/', // Halaman awal aplikasi
+        initialRoute: '/',
         routes: {
           '/': (context) => MenuPage(),
           '/kategori': (context) => KategoriView(),
           '/produk': (context) => ProdukView(),
           '/keranjang': (context) => KeranjangView(),
-          '/checkout': (context) => CheckoutView(), // Routing untuk CheckoutView
-          '/penjualan': (context) => PenjualanView(), // Routing untuk PenjualanView
+          '/checkout': (context) => CheckoutView(),
+          '/penjualan': (context) => PenjualanView(),
         },
       ),
     );
@@ -52,37 +52,99 @@ class MenuPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Menu Utama')),
+      appBar: AppBar(
+        title: Text(
+          'Smart Toko',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.amber, // Ubah menjadi kuning emas
+        actions: [],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/kategori');
-              },
-              child: Text('Kelola Kategori'),
+            SizedBox(height: 20),
+            Center(
+              child: Text(
+                'Selamat datang di Smart Toko!',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/produk');
-              },
-              child: Text('Kelola Produk'),
+
+            SizedBox(height: 20),
+            _buildMenuButton(
+              context,
+              label: 'Kelola Kategori',
+              route: '/kategori',
+              icon: Icons.category,
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/keranjang'); // Navigasi ke Keranjang
-              },
-              child: Text('Kelola Keranjang'), // Button untuk Kelola Keranjang
+            _buildMenuButton(
+              context,
+              label: 'Kelola Produk',
+              route: '/produk',
+              icon: Icons.shopping_basket,
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/penjualan'); // Navigasi ke PenjualanView
-              },
-              child: Text('Lihat Penjualan'), // Button untuk melihat Penjualan
+            _buildMenuButton(
+              context,
+              label: 'Kelola Sales',
+              route: '/keranjang',
+              icon: Icons.shopping_cart,
+            ),
+            _buildMenuButton(
+              context,
+              label: 'Lihat Penjualan',
+              route: '/penjualan',
+              icon: Icons.receipt,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuButton(
+      BuildContext context, {
+        required String label,
+        required String route,
+        required IconData icon,
+      }) {
+    return Card(
+      elevation: 4,
+      margin: EdgeInsets.symmetric(vertical: 10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20.0),
+        child: ListTile(
+          contentPadding: EdgeInsets.symmetric(horizontal: 20),
+          leading: Icon(
+            icon,
+            color: Colors.amber, // Ubah warna ikon menjadi kuning emas
+            size: 30,
+          ),
+          title: Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87, // Warna teks tetap gelap agar terbaca
+            ),
+          ),
+          trailing: Icon(
+            Icons.arrow_forward_ios,
+            color: Colors.amber, // Ubah warna ikon trailing menjadi kuning emas
+          ),
+          onTap: () {
+            Navigator.pushNamed(context, route);
+          },
         ),
       ),
     );

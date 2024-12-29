@@ -10,11 +10,11 @@ class KategoriView extends StatefulWidget {
 
 class _KategoriViewState extends State<KategoriView> {
   final TextEditingController _controller = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // Memuat kategori saat pertama kali tampil
     Provider.of<KategoriController>(context, listen: false).loadKategori();
   }
 
@@ -22,56 +22,126 @@ class _KategoriViewState extends State<KategoriView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Kelola Kategori'),
+        title: Text(
+          'Kelola Kategori',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: Colors.amber,
       ),
       body: Column(
         children: [
-          ElevatedButton(
-            onPressed: () {
-              // Menambahkan kategori baru
-              _showAddDialog(context);
-            },
-            child: Text('Tambah Kategori'),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: () => _showAddDialog(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                padding: EdgeInsets.symmetric(vertical: 14.0),
+                minimumSize: Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                'Tambah Kategori',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (query) {
+                setState(() {
+                  // Rebuild with filtered list
+                });
+              },
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: 'Cari Kategori...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          // Menambahkan teks "Daftar Kategori" di atas list kategori
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+            child: Text(
+              'Daftar Kategori',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
           ),
           Expanded(
             child: Consumer<KategoriController>(
               builder: (context, kategoriController, child) {
-                if (kategoriController.kategoriList.isEmpty) {
-                  return Center(child: Text('Belum ada kategori.'));
+                // Filter the kategori list based on search query
+                String searchQuery = _searchController.text.toLowerCase();
+                var filteredList = kategoriController.kategoriList
+                    .where((kategori) =>
+                    kategori.namaKategori.toLowerCase().contains(searchQuery))
+                    .toList();
+
+                if (filteredList.isEmpty) {
+                  return Center(child: Text('Tidak ada kategori yang ditemukan.'));
                 }
 
                 return ListView.builder(
-                  itemCount: kategoriController.kategoriList.length,
+                  itemCount: filteredList.length,
                   itemBuilder: (context, index) {
-                    final kategori = kategoriController.kategoriList[index];
-                    return Card(
-                      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                      elevation: 4,
-                      child: ListTile(
-                        title: Row(
-                          children: [
-                            Text('${index + 1}. '), // Menampilkan nomor
-                            Text(kategori.namaKategori),
-                          ],
+                    final kategori = filteredList[index];
+                    return InkWell(
+                      onTap: () {},
+                      child: Card(
+                        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        elevation: 5,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        contentPadding: EdgeInsets.all(16),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child: Column(
                           children: [
-                            // Tombol Edit
-                            IconButton(
-                              icon: Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () {
-                                _controller.text = kategori.namaKategori;
-                                _showUpdateDialog(context, kategori);
-                              },
-                            ),
-                            // Tombol Delete dengan dialog konfirmasi
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                _showDeleteDialog(context, kategori);
-                              },
+                            ExpansionTile(
+                              title: Row(
+                                children: [
+                                  Text('${index + 1}. ', style: TextStyle(fontSize: 16)),
+                                  Text(kategori.namaKategori, style: TextStyle(fontSize: 16)),
+                                ],
+                              ),
+                              trailing: Icon(Icons.arrow_drop_down),
+                              children: [
+                                ListTile(
+                                  title: Text(
+                                    "Update",
+                                    style: TextStyle(color: Colors.amber),
+                                  ),
+                                  onTap: () {
+                                    _controller.text = kategori.namaKategori;
+                                    _showUpdateDialog(context, kategori);
+                                  },
+                                ),
+                                ListTile(
+                                  title: Text(
+                                    "Delete",
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                  onTap: () {
+                                    _showDeleteDialog(context, kategori);
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -92,37 +162,75 @@ class _KategoriViewState extends State<KategoriView> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Tambah Kategori'),
-          content: TextField(
-            controller: _controller,
-            decoration: InputDecoration(labelText: 'Nama Kategori'),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                String kategoriName = _controller.text;
-                if (kategoriName.isNotEmpty) {
-                  Kategori kategori = Kategori(namaKategori: kategoriName);
-                  Provider.of<KategoriController>(context, listen: false)
-                      .addKategori(kategori);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Kategori berhasil ditambahkan!')),
-                  );
-                  _controller.clear();
-                  Navigator.pop(context);
-                }
-              },
-              child: Text('Simpan'),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Tambah Kategori',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+                SizedBox(height: 20),
+                TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    labelText: 'Nama Kategori',
+                    labelStyle: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: Text('Batal', style: TextStyle(color: Colors.red)),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        String kategoriName = _controller.text;
+                        if (kategoriName.isNotEmpty) {
+                          Kategori kategori = Kategori(namaKategori: kategoriName);
+                          Provider.of<KategoriController>(context, listen: false)
+                              .addKategori(kategori);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text('Kategori berhasil ditambahkan!'),
+                          ));
+                          _controller.clear();
+                          Navigator.pop(context);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orangeAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text('Simpan', style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black)),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _controller.clear();
-              },
-              child: Text('Batal'),
-            ),
-          ],
+          ),
         );
       },
     );
@@ -134,37 +242,76 @@ class _KategoriViewState extends State<KategoriView> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Update Kategori'),
-          content: TextField(
-            controller: _controller,
-            decoration: InputDecoration(labelText: 'Nama Kategori'),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                String kategoriName = _controller.text;
-                if (kategoriName.isNotEmpty) {
-                  kategori.namaKategori = kategoriName;
-                  Provider.of<KategoriController>(context, listen: false)
-                      .updateKategori(kategori);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Kategori berhasil diperbarui!')),
-                  );
-                  _controller.clear();
-                  Navigator.pop(context);
-                }
-              },
-              child: Text('Simpan'),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Update Kategori',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+                SizedBox(height: 20),
+                TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    labelText: 'Nama Kategori',
+                    labelStyle: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _controller.clear();
+                      },
+                      child: Text('Batal', style: TextStyle(color: Colors.red)),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        String kategoriName = _controller.text;
+                        if (kategoriName.isNotEmpty) {
+                          kategori.namaKategori = kategoriName;
+                          Provider.of<KategoriController>(context, listen: false)
+                              .updateKategori(kategori);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text('Kategori berhasil diperbarui!'),
+                          ));
+                          _controller.clear();
+                          Navigator.pop(context);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text('Simpan', style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black)),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _controller.clear();
-              },
-              child: Text('Batal'),
-            ),
-          ],
+          ),
         );
       },
     );
@@ -175,30 +322,64 @@ class _KategoriViewState extends State<KategoriView> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Hapus Kategori'),
-          content: Text('Apakah Anda yakin ingin menghapus kategori ini?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('Batal'),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Hapus Kategori',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Apakah Anda yakin ingin menghapus kategori ini ?',
+                  style: TextStyle(fontSize: 16),
+                ),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: Text('Batal', style: TextStyle(color: Colors.black)),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Provider.of<KategoriController>(context, listen: false)
+                            .deleteKategori(kategori.id!);
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Kategori berhasil dihapus!'),
+                        ));
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text('Hapus', style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black)),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                Provider.of<KategoriController>(context, listen: false)
-                    .deleteKategori(kategori.id!);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Kategori berhasil dihapus!')),
-                );
-                Navigator.pop(context);
-              },
-              child: Text('Hapus'),
-            ),
-          ],
+          ),
         );
       },
     );
   }
 }
+

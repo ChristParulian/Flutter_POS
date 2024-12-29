@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../controllers/penjualan_controller.dart';
 import '../models/penjualan.dart';
 
@@ -12,7 +15,6 @@ class _PenjualanViewState extends State<PenjualanView> {
   @override
   void initState() {
     super.initState();
-    // Memuat penjualan dari file saat PenjualanView pertama kali dibuka
     var penjualanController = Provider.of<PenjualanController>(context, listen: false);
     penjualanController.muatPenjualanDariFile();
   }
@@ -71,14 +73,11 @@ class _PenjualanViewState extends State<PenjualanView> {
                       SizedBox(height: 10),
                       ElevatedButton(
                         onPressed: () {
-                          // Hapus penjualan dari daftar
                           penjualanController.daftarPenjualan.removeAt(index);
-                          penjualanController.simpanPenjualanKeFile(); // Simpan perubahan ke file
+                          penjualanController.simpanPenjualanKeFile();
                           penjualanController.notifyListeners();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Penjualan berhasil dihapus'),
-                            ),
+                            SnackBar(content: Text('Penjualan berhasil dihapus')),
                           );
                         },
                         style: ElevatedButton.styleFrom(
@@ -87,6 +86,20 @@ class _PenjualanViewState extends State<PenjualanView> {
                         ),
                         child: Text(
                           'Hapus Penjualan',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: () {
+                          _printPenjualan(penjualan);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          padding: EdgeInsets.symmetric(vertical: 12.0),
+                        ),
+                        child: Text(
+                          'Cetak Penjualan',
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
@@ -99,5 +112,72 @@ class _PenjualanViewState extends State<PenjualanView> {
         },
       ),
     );
+  }
+
+  void _printPenjualan(Penjualan penjualan) async {
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Header
+              pw.Text('Laporan Penjualan', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 10),
+              pw.Text('Tanggal Penjualan: ${penjualan.formattedTanggal}', style: pw.TextStyle(fontSize: 14)),
+              pw.SizedBox(height: 10),
+              pw.Divider(),
+              pw.SizedBox(height: 10),
+
+              // Detail Produk (Di atas)
+              pw.Text('Detail Produk:', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 10),
+              ...penjualan.daftarProduk.map(
+                    (produk) => pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(produk.namaProduk, style: pw.TextStyle(fontSize: 14)),
+                    pw.Text('Qty: ${produk.jumlah}', style: pw.TextStyle(fontSize: 14)),
+                    pw.Text('Rp${produk.totalHarga.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14)),
+                  ],
+                ),
+              ).toList(),
+              pw.SizedBox(height: 10),
+              pw.Divider(),
+              pw.SizedBox(height: 10),
+
+              // Informasi Penjualan (Setelah Detail Produk)
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Total Harga:', style: pw.TextStyle(fontSize: 14)),
+                  pw.Text('Rp${penjualan.totalHarga.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14)),
+                ],
+              ),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Jumlah Dibayar:', style: pw.TextStyle(fontSize: 14)),
+                  pw.Text('Rp${penjualan.jumlahDibayar.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14)),
+                ],
+              ),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Kembalian:', style: pw.TextStyle(fontSize: 14)),
+                  pw.Text('Rp${penjualan.kembalian.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 14)),
+                ],
+              ),
+              pw.SizedBox(height: 20),
+            ],
+          );
+        },
+      ),
+    );
+
+    // Print or save the PDF
+    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
   }
 }
