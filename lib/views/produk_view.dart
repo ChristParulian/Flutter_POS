@@ -12,6 +12,7 @@ class ProdukView extends StatefulWidget {
 
 class _ProdukViewState extends State<ProdukView> {
   int? _selectedKategoriId;
+  String _searchQuery = ''; // Variabel untuk pencarian
 
   @override
   Widget build(BuildContext context) {
@@ -37,12 +38,13 @@ class _ProdukViewState extends State<ProdukView> {
                 onPressed: () {
                   _showTambahProdukDialog(context);
                 },
-                label: Text('Tambah Produk',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+                label: Text(
+                  'Tambah Produk',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amber,
@@ -52,6 +54,21 @@ class _ProdukViewState extends State<ProdukView> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+              ),
+            ),
+            SizedBox(height: 16.0),
+
+            // Pencarian Produk
+            TextFormField(
+              onChanged: (query) {
+                setState(() {
+                  _searchQuery = query;
+                });
+              },
+              decoration: InputDecoration(
+                labelText: 'Cari Produk...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
               ),
             ),
             SizedBox(height: 16.0),
@@ -91,15 +108,20 @@ class _ProdukViewState extends State<ProdukView> {
             Expanded(
               child: Consumer<ProdukController>(
                 builder: (context, produkController, child) {
-                  List<Produk> filteredProdukList = _selectedKategoriId == null
-                      ? produkController.produkList
-                      : produkController.produkList.where((produk) {
-                    return produk.kategoriId == _selectedKategoriId;
+                  List<Produk> filteredProdukList = produkController.produkList
+                      .where((produk) {
+                    // Filter berdasarkan kategori dan pencarian
+                    bool matchesKategori = _selectedKategoriId == null ||
+                        produk.kategoriId == _selectedKategoriId;
+                    bool matchesSearch = produk.namaProduk
+                        .toLowerCase()
+                        .contains(_searchQuery.toLowerCase());
+                    return matchesKategori && matchesSearch;
                   }).toList();
 
                   if (filteredProdukList.isEmpty) {
                     return Center(
-                      child: Text('Tidak ada produk untuk kategori yang dipilih.'),
+                      child: Text('Tidak ada produk yang sesuai dengan pencarian atau kategori yang dipilih.'),
                     );
                   }
 
@@ -196,8 +218,6 @@ class _ProdukViewState extends State<ProdukView> {
                                     ),
                                   ),
                                 ),
-
-
                               ],
                             ),
                           ],
@@ -224,9 +244,9 @@ class _ProdukViewState extends State<ProdukView> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Tambah Produk',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-        ),),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),),
         content: SingleChildScrollView(
           child: Column(
             children: [
@@ -266,8 +286,8 @@ class _ProdukViewState extends State<ProdukView> {
             onPressed: () => Navigator.of(context).pop(),
             child: Text('Batal',
               style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold
               ),),
           ),
           ElevatedButton(
@@ -292,10 +312,10 @@ class _ProdukViewState extends State<ProdukView> {
               ),
             ),
             child: Text('Simpan',
-            style: TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.bold
-            ),),
+              style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold
+              ),),
           ),
         ],
       ),
@@ -350,10 +370,10 @@ class _ProdukViewState extends State<ProdukView> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text('Batal',
-            style:
+              style:
               TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),),
           ),
           ElevatedButton(
@@ -376,10 +396,10 @@ class _ProdukViewState extends State<ProdukView> {
               ),
             ),
             child: Text('Simpan',
-            style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold
-            ),),
+              style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold
+              ),),
           ),
         ],
       ),

@@ -98,7 +98,6 @@ class _KategoriViewState extends State<KategoriView> {
                 if (filteredList.isEmpty) {
                   return Center(child: Text('Tidak ada kategori yang ditemukan.'));
                 }
-
                 return ListView.builder(
                   itemCount: filteredList.length,
                   itemBuilder: (context, index) {

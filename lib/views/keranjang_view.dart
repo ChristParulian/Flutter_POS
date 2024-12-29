@@ -50,28 +50,31 @@ class _KeranjangViewState extends State<KeranjangView> with SingleTickerProvider
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Kelola Keranjang'),
-        backgroundColor: Colors.teal,
+        title: Text(
+          'Kelola Keranjang',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.amber, // Mengganti warna utama menjadi amber
         bottom: kategoriList.isEmpty
             ? null // Jangan tampilkan TabBar jika kategori kosong
             : TabBar(
           controller: _tabController,
           isScrollable: true,
-          indicatorColor: Colors.white, // Warna indikator tab aktif
-          labelColor: Colors.white, // Warna teks tab aktif
-          unselectedLabelColor: Colors.white60, // Warna teks tab tidak aktif
+          indicatorColor: Colors.white,
+          labelColor: Colors.black,
+          unselectedLabelColor: Colors.white70,
           tabs: [
             Tab(
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 16.0),
-                color: _tabController.index == 0 ? Colors.teal : Colors.transparent, // Menambahkan background warna untuk tab aktif
+                color: _tabController.index == 0 ? Colors.amber : Colors.transparent, // Warna tab aktif
                 child: Text('All'),
               ),
             ),  // Tab untuk menampilkan semua produk
             ...kategoriList.map((kategori) => Tab(
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 16.0),
-                color: _tabController.index == kategoriList.indexOf(kategori) + 1 ? Colors.teal : Colors.transparent, // Warna tab kategori aktif
+                color: _tabController.index == kategoriList.indexOf(kategori) + 1 ? Colors.amber : Colors.transparent, // Warna tab kategori aktif
                 child: Text(kategori.namaKategori),
               ),
             )).toList(),
@@ -117,7 +120,7 @@ class _KeranjangViewState extends State<KeranjangView> with SingleTickerProvider
                             ),
                             SizedBox(height: 8),
                             Text(
-                              '\$${produk.harga.toStringAsFixed(2)}',
+                              'Rp ${produk.harga.toStringAsFixed(0)}', // Mengubah harga menjadi Rp dan menghilangkan .00
                               style: TextStyle(color: Colors.grey),
                             ),
                             SizedBox(height: 8),
@@ -131,7 +134,7 @@ class _KeranjangViewState extends State<KeranjangView> with SingleTickerProvider
                                 keranjangController.tambahKeKeranjang(keranjang);
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.teal,
+                                backgroundColor: Colors.amber, // Menggunakan warna amber untuk tombol
                                 minimumSize: Size(80, 30),
                               ),
                               child: Text(
@@ -165,7 +168,6 @@ class _KeranjangViewState extends State<KeranjangView> with SingleTickerProvider
                           return Container(); // Kembalikan Container kosong jika tidak ada produk
                         }
 
-                        // Jika produk ditemukan, ambil produk pertama yang sesuai
                         final item = produk.first;
 
                         return Card(
@@ -186,7 +188,7 @@ class _KeranjangViewState extends State<KeranjangView> with SingleTickerProvider
                               ),
                               SizedBox(height: 8),
                               Text(
-                                '\$${item.harga.toStringAsFixed(2)}',
+                                'Rp ${item.harga.toStringAsFixed(0)}',
                                 style: TextStyle(color: Colors.grey),
                               ),
                               SizedBox(height: 8),
@@ -200,7 +202,7 @@ class _KeranjangViewState extends State<KeranjangView> with SingleTickerProvider
                                   keranjangController.tambahKeKeranjang(keranjang);
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.teal,
+                                  backgroundColor: Colors.amber,
                                   minimumSize: Size(80, 30),
                                 ),
                                 child: Text(
@@ -227,7 +229,7 @@ class _KeranjangViewState extends State<KeranjangView> with SingleTickerProvider
                 Navigator.pushNamed(context, '/checkout');
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: Colors.amber,
                 padding: EdgeInsets.symmetric(vertical: 16.0),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8.0),
@@ -237,14 +239,14 @@ class _KeranjangViewState extends State<KeranjangView> with SingleTickerProvider
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    '${keranjangController.totalItem} item - \$${keranjangController.totalHarga.toStringAsFixed(2)}',
+                    '${keranjangController.totalItem} item - Rp${keranjangController.totalHarga.toStringAsFixed(0)} ', // Mengubah harga menjadi Rp dan menghilangkan .00
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: Colors.black,
                     ),
                   ),
-                  Icon(Icons.shopping_cart_checkout, color: Colors.white),
+                  Icon(Icons.shopping_cart_checkout, color: Colors.black),
                 ],
               ),
             ),
