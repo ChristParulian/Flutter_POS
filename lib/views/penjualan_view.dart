@@ -80,9 +80,9 @@ class _PenjualanViewState extends State<PenjualanView> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Total Harga: Rp${penjualan.totalHarga.toStringAsFixed(2)}'),
-                        Text('Jumlah Dibayar: Rp${penjualan.jumlahDibayar.toStringAsFixed(2)}'),
-                        Text('Kembalian: Rp${penjualan.kembalian.toStringAsFixed(2)}'),
+                        Text('Total Harga: Rp${penjualan.totalHarga.toStringAsFixed(penjualan.totalHarga == penjualan.totalHarga.toInt() ? 0 : 2)}'),
+                        Text('Jumlah Dibayar: Rp${penjualan.jumlahDibayar.toStringAsFixed(penjualan.jumlahDibayar == penjualan.jumlahDibayar.toInt() ? 0 : 2)}'),
+                        Text('Kembalian: Rp${penjualan.kembalian.toStringAsFixed(penjualan.kembalian == penjualan.kembalian.toInt() ? 0 : 2)}'),
                       ],
                     ),
                     iconColor: Colors.amber,
@@ -112,7 +112,7 @@ class _PenjualanViewState extends State<PenjualanView> {
                                   dense: true,
                                   contentPadding: EdgeInsets.zero,
                                   title: Text(produk.namaProduk),
-                                  subtitle: Text('Qty: ${produk.jumlah} - Rp${produk.totalHarga.toStringAsFixed(2)}'),
+                                  subtitle: Text('Qty: ${produk.jumlah} - Rp${produk.totalHarga.toStringAsFixed(produk.totalHarga == produk.totalHarga.toInt() ? 0 : 2)}'),
                                 );
                               },
                             ),
@@ -212,7 +212,7 @@ class _PenjualanViewState extends State<PenjualanView> {
                   children: [
                     pw.Text(produk.namaProduk, style: pw.TextStyle(fontSize: 7)),
                     pw.Text('Qty: ${produk.jumlah}', style: pw.TextStyle(fontSize: 7)),
-                    pw.Text('Rp${produk.totalHarga.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 7)),
+                    pw.Text('Rp${produk.totalHarga == produk.totalHarga.toInt() ? produk.totalHarga.toStringAsFixed(0) : produk.totalHarga.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 7)),
                   ],
                 ),
               ).toList(),
@@ -222,21 +222,21 @@ class _PenjualanViewState extends State<PenjualanView> {
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text('Total:', style: pw.TextStyle(fontSize: 8)),
-                  pw.Text('Rp${penjualan.totalHarga.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8)),
+                  pw.Text('Rp${penjualan.totalHarga == penjualan.totalHarga.toInt() ? penjualan.totalHarga.toStringAsFixed(0) : penjualan.totalHarga.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8)),
                 ],
               ),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text('Dibayar:', style: pw.TextStyle(fontSize: 8)),
-                  pw.Text('Rp${penjualan.jumlahDibayar.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8)),
+                  pw.Text('Rp${penjualan.jumlahDibayar == penjualan.jumlahDibayar.toInt() ? penjualan.jumlahDibayar.toStringAsFixed(0) : penjualan.jumlahDibayar.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8)),
                 ],
               ),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text('Kembali:', style: pw.TextStyle(fontSize: 8)),
-                  pw.Text('Rp${penjualan.kembalian.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8)),
+                  pw.Text('Rp${penjualan.kembalian == penjualan.kembalian.toInt() ? penjualan.kembalian.toStringAsFixed(0) : penjualan.kembalian.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8)),
                 ],
               ),
               pw.SizedBox(height: 20),
