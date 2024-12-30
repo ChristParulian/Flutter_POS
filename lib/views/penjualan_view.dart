@@ -20,8 +20,17 @@ class _PenjualanViewState extends State<PenjualanView> {
     super.initState();
     var penjualanController = Provider.of<PenjualanController>(context, listen: false);
     penjualanController.muatPenjualanDariFile();
-    filteredPenjualan = penjualanController.daftarPenjualan; // Menyimpan daftar penjualan yang sudah dimuat
+    filteredPenjualan = penjualanController.daftarPenjualan;
+
+    // Mengurutkan berdasarkan tanggal dan waktu
+    filteredPenjualan.sort((a, b) {
+      // Pastikan 'formattedTanggal' berisi format yang valid, misalnya: 'yyyy-MM-dd HH:mm:ss'
+      DateTime dateA = DateTime.parse(a.formattedTanggal);
+      DateTime dateB = DateTime.parse(b.formattedTanggal);
+      return dateB.compareTo(dateA); // Urutkan berdasarkan tanggal dan waktu terbaru
+    });
   }
+
 
   @override
   Widget build(BuildContext context) {

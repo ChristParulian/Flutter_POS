@@ -17,7 +17,7 @@ class Penjualan {
   });
 
   String get formattedTanggal {
-    return DateFormat('yyyy-MM-dd').format(tanggal);
+    return DateFormat('yyyy-MM-dd HH:mm:ss').format(tanggal);
   }
 
   // Mengonversi objek Penjualan menjadi JSON
