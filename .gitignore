@@ -41,3 +41,22 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Kunci penandatanganan (signing) - JANGAN PERNAH dipush, ini rahasia untuk build rilis
+android/key.properties
+*.jks
+*.keystore
+
+# Variabel lingkungan / kredensial - jaga-jaga kalau nanti ditambahkan
+.env
+.env.*
+
+# File sampah OS (Windows)
+Thumbs.db
+ehthumbs.db
+
+# File terkait workflow AI/Claude Code - bukan bagian dari aplikasi, tidak perlu dipush
+.claude/
+CLAUDE.md
+antislop.md
+DESIGN.md

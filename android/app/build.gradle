@@ -7,7 +7,11 @@ plugins {
 
 android {
     namespace = "com.example.pos_flutter"
-    compileSdk = flutter.compileSdkVersion
+    // compileSdk 35 dipaksa (bukan mengikuti default flutter.compileSdkVersion) karena
+    // flutter_plugin_android_lifecycle (dipakai image_picker/mobile_scanner) butuh SDK 35+
+    // untuk dikompilasi. Aman: compileSdk hanya menentukan API yang tersedia saat build,
+    // tidak mengubah minSdk/targetSdk yang dialami pengguna akhir.
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

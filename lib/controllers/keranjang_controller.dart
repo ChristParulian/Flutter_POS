@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/keranjang.dart';
 
 class KeranjangController with ChangeNotifier {
-  List<Keranjang> _keranjangList = [];
+  final List<Keranjang> _keranjangList = [];
 
   List<Keranjang> get keranjangList => _keranjangList;
 
@@ -17,10 +17,21 @@ class KeranjangController with ChangeNotifier {
     notifyListeners();
   }
 
+  // Jumlah produk tertentu yang sudah ada di keranjang, dipakai untuk validasi stok sebelum menambah
+  int jumlahDiKeranjang(int produkId) {
+    final index = _keranjangList.indexWhere((item) => item.id == produkId);
+    return index == -1 ? 0 : _keranjangList[index].jumlah;
+  }
+
   // Metode untuk menghapus item dari keranjang
   void hapusDariKeranjang(int idProduk) {
     _keranjangList.removeWhere((item) => item.id == idProduk);
     notifyListeners(); // Memberitahukan perubahan kepada listener
+  }
+
+  void kosongkanKeranjang() {
+    _keranjangList.clear();
+    notifyListeners();
   }
 
   double get totalHarga => _keranjangList.fold(0, (total, item) => total + item.totalHarga);

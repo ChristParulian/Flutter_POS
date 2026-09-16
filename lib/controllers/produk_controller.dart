@@ -2,67 +2,72 @@ import '../models/produk.dart';
 import '../helpers/database_helper.dart';
 import 'package:flutter/material.dart';
 
+class ProdukTidakValidException implements Exception {
+  final String pesan;
+  ProdukTidakValidException(this.pesan);
+
+  @override
+  String toString() => pesan;
+}
+
 class ProdukController extends ChangeNotifier {
   List<Produk> _produkList = [];
+  bool isLoading = true;
 
   List<Produk> get produkList => _produkList;
 
   // Memuat semua produk
   Future<void> loadProduk() async {
-    try {
-      _produkList = await DatabaseHelper.getProduk();
-      notifyListeners(); // Memberi tahu listener agar UI diupdate
-    } catch (e) {
-      print("Error loading produk: $e");
+    // Tidak notifyListeners() sebelum await pertama: metode ini dipanggil langsung saat
+    // provider dibuat (masih dalam proses build), lihat catatan yang sama di KategoriController.
+    isLoading = true;
+    _produkList = await DatabaseHelper.getProduk();
+    isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> _validasi(Produk produk) async {
+    if (produk.namaProduk.trim().isEmpty) {
+      throw ProdukTidakValidException('Nama produk tidak boleh kosong');
+    }
+    if (produk.harga <= 0) {
+      throw ProdukTidakValidException('Harga produk harus lebih dari 0');
+    }
+    if (produk.kategoriId <= 0) {
+      throw ProdukTidakValidException('Kategori produk harus dipilih');
+    }
+    if (produk.stok < 0) {
+      throw ProdukTidakValidException('Stok tidak boleh negatif');
+    }
+    final barcode = produk.barcode?.trim();
+    if (barcode != null && barcode.isNotEmpty) {
+      final existing = await DatabaseHelper.getProdukByBarcode(barcode);
+      if (existing != null && existing.id != produk.id) {
+        throw ProdukTidakValidException('Barcode sudah dipakai produk lain');
+      }
     }
   }
 
-  // Menambahkan produk baru
+  // Menambahkan produk baru. Melempar ProdukTidakValidException jika data tidak valid.
   Future<void> addProduk(Produk produk) async {
-    try {
-      // Validasi input produk
-      if (produk.namaProduk.isEmpty || produk.harga <= 0 || produk.kategoriId <= 0) {
-        print("Produk tidak valid!");
-        return; // Menghentikan eksekusi jika data tidak valid
-      }
-
-      await DatabaseHelper.addProduk(produk);
-      await loadProduk(); // Memuat ulang produk setelah penambahan
-      print("Produk berhasil ditambahkan.");
-    } catch (e) {
-      print("Error adding produk: $e");
-    }
+    await _validasi(produk);
+    await DatabaseHelper.addProduk(produk);
+    await loadProduk();
   }
 
   // Menghapus produk
   Future<void> deleteProduk(int id) async {
-    try {
-      await DatabaseHelper.deleteProduk(id);
-      await loadProduk(); // Memuat ulang produk setelah penghapusan
-      print("Produk berhasil dihapus.");
-    } catch (e) {
-      print("Error deleting produk: $e");
-    }
+    await DatabaseHelper.deleteProduk(id);
+    await loadProduk();
   }
 
-  // Mengupdate produk
+  // Mengupdate produk. Melempar ProdukTidakValidException jika data tidak valid.
   Future<void> updateProduk(Produk produk) async {
-    try {
-      // Validasi produk
-      if (produk.id == null || produk.id! <= 0) {
-        print("Produk tidak ditemukan!");
-        return; // Menghentikan eksekusi jika ID produk tidak valid
-      }
-      if (produk.namaProduk.isEmpty || produk.harga <= 0 || produk.kategoriId <= 0) {
-        print("Produk tidak valid!");
-        return; // Menghentikan eksekusi jika data tidak valid
-      }
-
-      await DatabaseHelper.updateProduk(produk);
-      await loadProduk(); // Memuat ulang produk setelah update
-      print("Produk berhasil diperbarui.");
-    } catch (e) {
-      print("Error updating produk: $e");
+    if (produk.id == null || produk.id! <= 0) {
+      throw ProdukTidakValidException('Produk tidak ditemukan');
     }
+    await _validasi(produk);
+    await DatabaseHelper.updateProduk(produk);
+    await loadProduk();
   }
 }

@@ -1,48 +1,47 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
+import '../helpers/database_helper.dart';
 import '../models/penjualan.dart';
-import '../models/keranjang.dart'; // Pastikan model Keranjang sudah ada
+import '../models/keranjang.dart';
 
 class PenjualanController extends ChangeNotifier {
-  List<Penjualan> daftarPenjualan = []; // Menyimpan daftar penjualan
+  List<Penjualan> daftarPenjualan = [];
+  bool isLoading = true;
 
-  // Menyimpan penjualan baru
-  void simpanPenjualan(List<Keranjang> keranjangList, double totalHarga, double jumlahDibayar, double kembalian) {
+  List<Penjualan> get getPenjualan => daftarPenjualan;
+
+  // Menyimpan transaksi baru (menyimpan penjualan, item-itemnya, dan mengurangi stok, semua sekaligus).
+  // Melempar StokTidakCukupException jika stok produk tidak lagi cukup saat checkout dilakukan.
+  Future<void> simpanPenjualan(
+    List<Keranjang> keranjangList,
+    double totalHarga,
+    double jumlahDibayar,
+    double kembalian,
+  ) async {
     final penjualan = Penjualan(
       tanggal: DateTime.now(),
       totalHarga: totalHarga,
       jumlahDibayar: jumlahDibayar,
       kembalian: kembalian,
-      daftarProduk: List.from(keranjangList), // Salin data keranjang ke daftar produk
+      daftarProduk: List.from(keranjangList),
     );
-    daftarPenjualan.add(penjualan); // Menambahkan penjualan baru ke daftar
-    simpanPenjualanKeFile(); // Simpan ke file setelah penjualan ditambahkan
-    notifyListeners(); // Memberitahu semua widget yang menggunakan controller ini
+    await DatabaseHelper.addPenjualan(penjualan);
+    await muatPenjualan();
   }
 
-  // Mendapatkan daftar penjualan
-  List<Penjualan> get getPenjualan => daftarPenjualan;
-
-  // Menyimpan daftar penjualan ke file JSON
-  Future<void> simpanPenjualanKeFile() async {  // Mengubah menjadi public
-    final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/penjualan.json');
-    final jsonPenjualan = jsonEncode(daftarPenjualan.map((penjualan) => penjualan.toJson()).toList());
-    await file.writeAsString(jsonPenjualan);
+  // Menghapus penjualan dari daftar dan database
+  Future<void> hapusPenjualan(Penjualan penjualan) async {
+    if (penjualan.id == null) return;
+    await DatabaseHelper.deletePenjualan(penjualan.id!);
+    await muatPenjualan();
   }
 
-  // Memuat daftar penjualan dari file JSON
-  Future<void> muatPenjualanDariFile() async {
-    final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/penjualan.json');
-
-    if (await file.exists()) {
-      final fileContents = await file.readAsString();
-      final List<dynamic> jsonList = jsonDecode(fileContents);
-      daftarPenjualan = jsonList.map((jsonItem) => Penjualan.fromJson(jsonItem)).toList();
-      notifyListeners(); // Memberitahu bahwa data telah dimuat
-    }
+  // Memuat daftar penjualan dari database
+  Future<void> muatPenjualan() async {
+    // Tidak notifyListeners() sebelum await pertama: metode ini dipanggil langsung saat
+    // provider dibuat (masih dalam proses build), lihat catatan yang sama di KategoriController.
+    isLoading = true;
+    daftarPenjualan = await DatabaseHelper.getPenjualanList();
+    isLoading = false;
+    notifyListeners();
   }
 }

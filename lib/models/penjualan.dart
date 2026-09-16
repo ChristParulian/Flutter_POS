@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 import '../models/keranjang.dart';
 
 class Penjualan {
+  int? id;
   DateTime tanggal;
   double totalHarga;
   double jumlahDibayar;
@@ -9,6 +10,7 @@ class Penjualan {
   List<Keranjang> daftarProduk;
 
   Penjualan({
+    this.id,
     required this.tanggal,
     required this.totalHarga,
     required this.jumlahDibayar,
@@ -20,27 +22,25 @@ class Penjualan {
     return DateFormat('yyyy-MM-dd HH:mm:ss').format(tanggal);
   }
 
-  // Mengonversi objek Penjualan menjadi JSON
-  Map<String, dynamic> toJson() {
+  // Mengubah data induk penjualan menjadi map (tanpa daftar item, disimpan di tabel terpisah)
+  Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'tanggal': tanggal.toIso8601String(),
       'totalHarga': totalHarga,
       'jumlahDibayar': jumlahDibayar,
       'kembalian': kembalian,
-      'daftarProduk': daftarProduk.map((produk) => produk.toJson()).toList(),
     };
   }
 
-  // Mengonversi JSON menjadi objek Penjualan
-  factory Penjualan.fromJson(Map<String, dynamic> json) {
+  factory Penjualan.fromMap(Map<String, dynamic> map, List<Keranjang> daftarProduk) {
     return Penjualan(
-      tanggal: DateTime.parse(json['tanggal']),
-      totalHarga: json['totalHarga'],
-      jumlahDibayar: json['jumlahDibayar'],
-      kembalian: json['kembalian'],
-      daftarProduk: (json['daftarProduk'] as List)
-          .map((item) => Keranjang.fromJson(item)) // Memastikan Keranjang punya fromJson
-          .toList(),
+      id: map['id'],
+      tanggal: DateTime.parse(map['tanggal']),
+      totalHarga: map['totalHarga'],
+      jumlahDibayar: map['jumlahDibayar'],
+      kembalian: map['kembalian'],
+      daftarProduk: daftarProduk,
     );
   }
 }

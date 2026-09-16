@@ -24,24 +24,4 @@ class Keranjang {
       jumlah--;
     }
   }
-
-  // Mengonversi objek Keranjang menjadi JSON
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'namaProduk': namaProduk,
-      'harga': harga,
-      'jumlah': jumlah,
-    };
-  }
-
-  // Mengonversi JSON menjadi objek Keranjang
-  factory Keranjang.fromJson(Map<String, dynamic> json) {
-    return Keranjang(
-      id: json['id'],
-      namaProduk: json['namaProduk'],
-      harga: json['harga'],
-      jumlah: json['jumlah'],
-    );
-  }
 }
