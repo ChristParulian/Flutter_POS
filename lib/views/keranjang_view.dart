@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../controllers/produk_controller.dart';
 import '../controllers/keranjang_controller.dart';
 import '../controllers/kategori_controller.dart';
+import '../helpers/format_helper.dart';
 import '../models/produk.dart';
 import '../models/keranjang.dart';
 import '../widgets/foto_thumbnail.dart';
@@ -254,7 +255,7 @@ class _KeranjangViewState extends State<KeranjangView> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        habis ? 'Stok habis' : 'Rp${produk.harga.toStringAsFixed(0)} · sisa $sisaStok',
+                        habis ? 'Stok habis' : 'Rp${FormatHelper.rupiah(produk.harga)} · sisa $sisaStok',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 12, color: habis ? Colors.red.shade700 : Colors.grey.shade600),
@@ -354,7 +355,7 @@ class _KeranjangViewState extends State<KeranjangView> {
                           });
                         },
                         title: Text(item.namaProduk, style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text('${item.jumlah} x Rp${item.harga.toStringAsFixed(0)} = Rp${item.totalHarga.toStringAsFixed(0)}'),
+                        subtitle: Text('${item.jumlah} x Rp${FormatHelper.rupiah(item.harga)} = Rp${FormatHelper.rupiah(item.totalHarga)}'),
                         secondary: IconButton(
                           icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                           onPressed: () {
@@ -379,7 +380,7 @@ class _KeranjangViewState extends State<KeranjangView> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Total dipilih', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text('Rp${total.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.amber.shade800)),
+                      Text('Rp${FormatHelper.rupiah(total)}', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.amber.shade800)),
                     ],
                   ),
                   const SizedBox(height: 12),

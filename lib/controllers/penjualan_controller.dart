@@ -11,7 +11,9 @@ class PenjualanController extends ChangeNotifier {
 
   // Menyimpan transaksi baru (menyimpan penjualan, item-itemnya, dan mengurangi stok, semua sekaligus).
   // Melempar StokTidakCukupException jika stok produk tidak lagi cukup saat checkout dilakukan.
-  Future<void> simpanPenjualan(
+  // Mengembalikan objek Penjualan yang baru tersimpan (lengkap dengan id dari database) supaya
+  // bisa langsung dicetak struknya tanpa perlu query ulang atau menebak ulang waktu transaksi.
+  Future<Penjualan> simpanPenjualan(
     List<Keranjang> keranjangList,
     double totalHarga,
     double jumlahDibayar,
@@ -24,8 +26,9 @@ class PenjualanController extends ChangeNotifier {
       kembalian: kembalian,
       daftarProduk: List.from(keranjangList),
     );
-    await DatabaseHelper.addPenjualan(penjualan);
+    penjualan.id = await DatabaseHelper.addPenjualan(penjualan);
     await muatPenjualan();
+    return penjualan;
   }
 
   // Menghapus penjualan dari daftar dan database

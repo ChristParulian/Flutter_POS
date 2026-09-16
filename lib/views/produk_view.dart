@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../controllers/produk_controller.dart';
 import '../controllers/kategori_controller.dart';
 import '../helpers/foto_helper.dart';
+import '../helpers/format_helper.dart';
 import '../models/produk.dart';
 import '../models/kategori.dart';
 import '../widgets/foto_thumbnail.dart';
@@ -170,7 +171,7 @@ class _ProdukViewState extends State<ProdukView> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        'Rp${produk.harga.toStringAsFixed(0)}',
+                                        'Rp${FormatHelper.rupiah(produk.harga)}',
                                         style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade800),
                                       ),
                                     ],

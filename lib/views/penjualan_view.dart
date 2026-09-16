@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import '../controllers/penjualan_controller.dart';
+import '../helpers/format_helper.dart';
+import '../helpers/struk_helper.dart';
 import '../models/penjualan.dart';
 
 class PenjualanView extends StatefulWidget {
@@ -17,6 +16,7 @@ class PenjualanView extends StatefulWidget {
 class _PenjualanViewState extends State<PenjualanView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  DateTimeRange? _rentangTanggal;
 
   @override
   void initState() {
@@ -30,24 +30,59 @@ class _PenjualanViewState extends State<PenjualanView> {
     super.dispose();
   }
 
+  // Cocok kalau tanggal transaksi ada di antara awal-akhir rentang (inklusif), termasuk
+  // seluruh hari terakhir (bukan cuma sampai jam 00:00) supaya transaksi di hari itu tidak
+  // ketinggalan. Rentang dengan tanggal awal = akhir otomatis berfungsi sebagai filter 1 hari.
+  bool _dalamRentang(DateTime tanggal) {
+    final rentang = _rentangTanggal;
+    if (rentang == null) return true;
+    final mulai = DateTime(rentang.start.year, rentang.start.month, rentang.start.day);
+    final akhir = DateTime(rentang.end.year, rentang.end.month, rentang.end.day, 23, 59, 59, 999);
+    return !tanggal.isBefore(mulai) && !tanggal.isAfter(akhir);
+  }
+
+  Future<void> _pilihRentangTanggal() async {
+    final sekarang = DateTime.now();
+    final hasil = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: sekarang,
+      initialDateRange: _rentangTanggal ?? DateTimeRange(start: sekarang, end: sekarang),
+      helpText: 'Pilih rentang tanggal (pilih tanggal yang sama untuk 1 hari)',
+      saveText: 'Simpan',
+    );
+    if (hasil != null) {
+      setState(() => _rentangTanggal = hasil);
+    }
+  }
+
+  String _labelRentang(DateTimeRange rentang) {
+    final format = DateFormat('dd/MM/yyyy');
+    final sama = rentang.start.year == rentang.end.year && rentang.start.month == rentang.end.month && rentang.start.day == rentang.end.day;
+    return sama ? format.format(rentang.start) : '${format.format(rentang.start)} - ${format.format(rentang.end)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final penjualanController = context.watch<PenjualanController>();
 
-    final filtered = _searchQuery.isEmpty
-        ? penjualanController.daftarPenjualan
-        : penjualanController.daftarPenjualan.where((p) {
-            final query = _searchQuery.toLowerCase();
-            return p.formattedTanggal.toLowerCase().contains(query) ||
-                p.daftarProduk.any((item) => item.namaProduk.toLowerCase().contains(query));
-          }).toList();
+    var filtered = penjualanController.daftarPenjualan.where((p) => _dalamRentang(p.tanggal)).toList();
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filtered = filtered.where((p) {
+        return p.formattedTanggal.toLowerCase().contains(query) ||
+            p.daftarProduk.any((item) => item.namaProduk.toLowerCase().contains(query));
+      }).toList();
+    }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Penjualan')),
+      appBar: AppBar(
+        title: const Text('Riwayat Penjualan'),
+      ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: TextField(
               controller: _searchController,
               decoration: const InputDecoration(
@@ -57,6 +92,29 @@ class _PenjualanViewState extends State<PenjualanView> {
               onChanged: (query) => setState(() => _searchQuery = query),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Row(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _pilihRentangTanggal,
+                  icon: Icon(Icons.date_range, size: 18, color: Colors.amber.shade800),
+                  label: const Text('Filter Rentang Tanggal', style: TextStyle(color: Colors.black87)),
+                ),
+                if (_rentangTanggal != null) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Chip(
+                      label: Text(_labelRentang(_rentangTanggal!), overflow: TextOverflow.ellipsis),
+                      onDeleted: () => setState(() => _rentangTanggal = null),
+                      backgroundColor: Colors.amber.shade50,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           Expanded(
             child: penjualanController.isLoading && penjualanController.daftarPenjualan.isEmpty
                 ? const Center(child: CircularProgressIndicator())
@@ -80,7 +138,7 @@ class _PenjualanViewState extends State<PenjualanView> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text('Rp${penjualan.totalHarga.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade800)),
+                                  Text('Rp${FormatHelper.rupiah(penjualan.totalHarga)}', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade800)),
                                   IconButton(
                                     icon: const Icon(Icons.print_outlined),
                                     onPressed: () => _printPenjualan(penjualan),
@@ -128,74 +186,7 @@ class _PenjualanViewState extends State<PenjualanView> {
 
   Future<void> _printPenjualan(Penjualan penjualan) async {
     try {
-      final pdf = pw.Document();
-      final pageFormat = PdfPageFormat(58 * PdfPageFormat.mm, double.infinity, marginAll: 5);
-      final bytes = await rootBundle.load('assets/images/logo.png');
-      final image = pw.MemoryImage(bytes.buffer.asUint8List());
-
-      String rupiah(double v) => v == v.toInt() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
-
-      pdf.addPage(
-        pw.Page(
-          pageFormat: pageFormat,
-          build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.center,
-                  children: [
-                    pw.Image(image, width: 24, height: 24),
-                    pw.SizedBox(width: 5),
-                    pw.Text('Smart Toko', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                  ],
-                ),
-                pw.SizedBox(height: 10),
-                pw.Text('Struk Belanja', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 5),
-                pw.Text('Tanggal: ${penjualan.formattedTanggal}', style: pw.TextStyle(fontSize: 8)),
-                pw.Divider(),
-                pw.Text('Detail Produk:', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                ...penjualan.daftarProduk.map(
-                  (produk) => pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text(produk.namaProduk, style: pw.TextStyle(fontSize: 7)),
-                      pw.Text('Qty: ${produk.jumlah}', style: pw.TextStyle(fontSize: 7)),
-                      pw.Text('Rp${rupiah(produk.totalHarga)}', style: pw.TextStyle(fontSize: 7)),
-                    ],
-                  ),
-                ),
-                pw.Divider(),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Total:', style: pw.TextStyle(fontSize: 8)),
-                    pw.Text('Rp${rupiah(penjualan.totalHarga)}', style: pw.TextStyle(fontSize: 8)),
-                  ],
-                ),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Dibayar:', style: pw.TextStyle(fontSize: 8)),
-                    pw.Text('Rp${rupiah(penjualan.jumlahDibayar)}', style: pw.TextStyle(fontSize: 8)),
-                  ],
-                ),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Text('Kembali:', style: pw.TextStyle(fontSize: 8)),
-                    pw.Text('Rp${rupiah(penjualan.kembalian)}', style: pw.TextStyle(fontSize: 8)),
-                  ],
-                ),
-                pw.SizedBox(height: 20),
-              ],
-            );
-          },
-        ),
-      );
-
-      await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+      await StrukHelper.cetakStruk(penjualan);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mencetak: $e')));

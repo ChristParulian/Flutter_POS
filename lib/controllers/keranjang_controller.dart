@@ -23,6 +23,17 @@ class KeranjangController with ChangeNotifier {
     return index == -1 ? 0 : _keranjangList[index].jumlah;
   }
 
+  // Mengubah jumlah item tertentu langsung ke nilai baru (dipakai oleh stepper +/- di Checkout).
+  // Tidak melakukan apa-apa kalau produknya tidak ada di keranjang, atau jumlah baru < 1
+  // (penghapusan item harus lewat hapusDariKeranjang secara eksplisit, bukan lewat jumlah 0).
+  void ubahJumlah(int produkId, int jumlahBaru) {
+    if (jumlahBaru < 1) return;
+    final index = _keranjangList.indexWhere((item) => item.id == produkId);
+    if (index == -1) return;
+    _keranjangList[index].jumlah = jumlahBaru;
+    notifyListeners();
+  }
+
   // Metode untuk menghapus item dari keranjang
   void hapusDariKeranjang(int idProduk) {
     _keranjangList.removeWhere((item) => item.id == idProduk);

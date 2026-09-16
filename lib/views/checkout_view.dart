@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/keranjang_controller.dart';
 import '../controllers/penjualan_controller.dart';
+import '../controllers/produk_controller.dart';
 import '../helpers/database_helper.dart';
+import '../helpers/format_helper.dart';
+import '../helpers/struk_helper.dart';
 import '../models/keranjang.dart';
 import '../widgets/numpad.dart';
 
@@ -38,6 +41,37 @@ class _CheckoutViewState extends State<CheckoutView> {
 
   double get total => keranjangCheckout.fold<double>(0.0, (t, item) => t + item.totalHarga);
 
+  // Batas stok saat menambah jumlah lewat stepper di sini - mengintip stok produk terkini
+  // supaya tidak bisa dinaikkan melebihi yang tersedia (baru gagal saat "Selesaikan
+  // Pembayaran" ditekan itu terlambat, lebih baik dicegah sejak stepper-nya).
+  int? _stokProduk(int produkId) {
+    final produkController = Provider.of<ProdukController>(context, listen: false);
+    for (final p in produkController.produkList) {
+      if (p.id == produkId) return p.stok;
+    }
+    return null;
+  }
+
+  void _ubahJumlah(Keranjang item, int jumlahBaru) {
+    if (jumlahBaru < 1) return;
+    final stok = _stokProduk(item.id);
+    if (stok != null && jumlahBaru > stok) return;
+
+    final keranjangController = Provider.of<KeranjangController>(context, listen: false);
+    keranjangController.ubahJumlah(item.id, jumlahBaru);
+    setState(() {});
+  }
+
+  void _hapusItem(Keranjang item) {
+    final keranjangController = Provider.of<KeranjangController>(context, listen: false);
+    keranjangController.hapusDariKeranjang(item.id);
+    setState(() {
+      keranjangCheckout = keranjangCheckout.where((e) => e.id != item.id).toList();
+      final bayar = double.tryParse(bayarController.text.trim()) ?? 0.0;
+      kembalian = bayar - total;
+    });
+  }
+
   Future<void> _prosesCheckout() async {
     final penjualanController = Provider.of<PenjualanController>(context, listen: false);
     final keranjangController = Provider.of<KeranjangController>(context, listen: false);
@@ -45,11 +79,22 @@ class _CheckoutViewState extends State<CheckoutView> {
 
     setState(() => _diproses = true);
     try {
-      await penjualanController.simpanPenjualan(keranjangCheckout, total, bayar, kembalian);
+      final penjualanTersimpan = await penjualanController.simpanPenjualan(keranjangCheckout, total, bayar, kembalian);
       for (final item in keranjangCheckout) {
         keranjangController.hapusDariKeranjang(item.id);
       }
       if (!mounted) return;
+
+      // Struk langsung dicetak begitu transaksi tersimpan. Gagal cetak (mis. tidak ada
+      // printer/dibatalkan) tidak membatalkan transaksi yang sudah tersimpan - kasir masih
+      // bisa cetak ulang dari Riwayat Penjualan.
+      try {
+        await StrukHelper.cetakStruk(penjualanTersimpan);
+      } catch (_) {
+        // sengaja diabaikan, lihat catatan di atas
+      }
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Transaksi berhasil')),
       );
@@ -80,10 +125,61 @@ class _CheckoutViewState extends State<CheckoutView> {
                     itemBuilder: (context, index) {
                       final item = keranjangCheckout[index];
                       return Card(
-                        child: ListTile(
-                          title: Text(item.namaProduk, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('${item.jumlah} x Rp${item.harga.toStringAsFixed(0)}'),
-                          trailing: Text('Rp${item.totalHarga.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade800)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      item.namaProduk,
+                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    style: IconButton.styleFrom(minimumSize: const Size(44, 44)),
+                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                                    tooltip: 'Hapus item',
+                                    onPressed: () => _hapusItem(item),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      _StepperButton(
+                                        icon: Icons.remove,
+                                        onTap: item.jumlah > 1 ? () => _ubahJumlah(item, item.jumlah - 1) : null,
+                                      ),
+                                      SizedBox(
+                                        width: 36,
+                                        child: Text(
+                                          '${item.jumlah}',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                      _StepperButton(
+                                        icon: Icons.add,
+                                        onTap: () => _ubahJumlah(item, item.jumlah + 1),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    'Rp${FormatHelper.rupiah(item.totalHarga)}',
+                                    style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade800),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -99,7 +195,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text('Total', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                            Text('Rp${total.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.amber.shade800)),
+                            Text('Rp${FormatHelper.rupiah(total)}', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: Colors.amber.shade800)),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -115,7 +211,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                             border: Border.all(color: Colors.grey.shade300),
                           ),
                           child: Text(
-                            'Rp ${bayarController.text.isEmpty ? "0" : bayarController.text}',
+                            'Rp ${FormatHelper.rupiah(int.tryParse(bayarController.text) ?? 0)}',
                             textAlign: TextAlign.right,
                             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                           ),
@@ -125,7 +221,7 @@ class _CheckoutViewState extends State<CheckoutView> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text('Kembalian', style: TextStyle(fontWeight: FontWeight.w600)),
-                            Text('Rp${kembalian < 0 ? 0 : kembalian.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade800)),
+                            Text('Rp${FormatHelper.rupiah(kembalian < 0 ? 0 : kembalian)}', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade800)),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -154,6 +250,27 @@ class _CheckoutViewState extends State<CheckoutView> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _StepperButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _StepperButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final aktif = onTap != null;
+    return IconButton(
+      style: IconButton.styleFrom(
+        minimumSize: const Size(44, 44),
+        backgroundColor: aktif ? Colors.amber.shade50 : Colors.grey.shade100,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      icon: Icon(icon, size: 16, color: aktif ? Colors.amber.shade800 : Colors.grey.shade400),
+      onPressed: onTap,
     );
   }
 }
