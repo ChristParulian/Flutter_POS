@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 import '../controllers/penjualan_controller.dart';
 import '../controllers/keranjang_controller.dart';
 import '../controllers/produk_controller.dart';
+import '../controllers/pengaturan_controller.dart';
 import '../helpers/format_helper.dart';
 import '../models/penjualan.dart';
 import '../models/keranjang.dart';
 import '../models/produk.dart';
+import '../models/pengaturan.dart';
 
 // Halaman beranda: menyapa kasir dengan data nyata hari ini (ringkasan penjualan,
 // keranjang yang masih berjalan, produk yang stoknya menipis) lalu titik masuk cepat ke
@@ -21,7 +23,23 @@ class BerandaView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Smart Toko')),
+      // Judul AppBar = nama toko dari pengaturan; tombol pensil di sebelahnya untuk
+      // mengubah nama & alamat toko. Nilai yang sama dipakai di header struk.
+      appBar: AppBar(
+        title: Consumer<PengaturanController>(
+          builder: (context, pengaturan, child) => Text(
+            pengaturan.namaToko,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Ubah nama & alamat toko',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => _bukaDialogEditToko(context),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -33,8 +51,12 @@ class BerandaView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Selamat datang kembali', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                    Text('Kelola toko Anda dari sini', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    const Text('Selamat datang kembali',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w700)),
+                    Text('Kelola toko Anda dari sini',
+                        style: TextStyle(
+                            color: Colors.grey.shade600, fontSize: 13)),
                   ],
                 ),
               ),
@@ -48,7 +70,8 @@ class BerandaView extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Consumer<KeranjangController>(
-            builder: (context, keranjangController, child) => _KeranjangBerjalan(
+            builder: (context, keranjangController, child) =>
+                _KeranjangBerjalan(
               keranjangList: keranjangController.keranjangList,
               totalHarga: keranjangController.totalHarga,
               onLanjutkan: () => onNavigateToTab(3),
@@ -59,10 +82,14 @@ class BerandaView extends StatelessWidget {
           const SizedBox(height: 8),
           _GridMenu(
             menuItems: [
-              _MenuItem('Kelola Kategori', Icons.category_outlined, () => onNavigateToTab(1)),
-              _MenuItem('Kelola Produk', Icons.shopping_basket_outlined, () => onNavigateToTab(2)),
-              _MenuItem('Keranjang', Icons.shopping_cart_outlined, () => onNavigateToTab(3)),
-              _MenuItem('Riwayat Penjualan', Icons.receipt_long_outlined, () => onNavigateToTab(4)),
+              _MenuItem('Kelola Kategori', Icons.category_outlined,
+                  () => onNavigateToTab(1)),
+              _MenuItem('Kelola Produk', Icons.shopping_basket_outlined,
+                  () => onNavigateToTab(2)),
+              _MenuItem('Keranjang', Icons.shopping_cart_outlined,
+                  () => onNavigateToTab(3)),
+              _MenuItem('Riwayat Penjualan', Icons.receipt_long_outlined,
+                  () => onNavigateToTab(4)),
             ],
           ),
           const SizedBox(height: 20),
@@ -75,6 +102,70 @@ class BerandaView extends StatelessWidget {
           const SizedBox(height: 16),
         ],
       ),
+    );
+  }
+
+  // Dialog edit identitas toko (nama + alamat). Nilai yang disimpan dipakai langsung
+  // sebagai header struk - lihat StrukHelper.
+  Future<void> _bukaDialogEditToko(BuildContext context) async {
+    final controller = context.read<PengaturanController>();
+    final namaController = TextEditingController(text: controller.namaToko);
+    final alamatController = TextEditingController(text: controller.alamatToko);
+
+    final tersimpan = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Identitas Toko'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: namaController,
+              decoration: const InputDecoration(labelText: 'Nama toko'),
+              textCapitalization: TextCapitalization.words,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: alamatController,
+              decoration:
+                  const InputDecoration(labelText: 'Alamat toko (opsional)'),
+              maxLines: 2,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+
+    // Baca nilai sebelum dispose supaya controller masih hidup saat teksnya dipakai.
+    final nama = namaController.text.trim();
+    final alamat = alamatController.text.trim();
+    namaController.dispose();
+    alamatController.dispose();
+
+    if (!context.mounted) return;
+    if (tersimpan != true) return;
+    if (nama.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nama toko tidak boleh kosong')),
+      );
+      return;
+    }
+    await controller.simpan(PengaturanToko(namaToko: nama, alamatToko: alamat));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Identitas toko disimpan')),
     );
   }
 }
@@ -95,7 +186,8 @@ class _JudulBagian extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       judul,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
+      style: const TextStyle(
+          fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
     );
   }
 }
@@ -107,21 +199,42 @@ class _RingkasanHariIni extends StatelessWidget {
 
   // Nama hari/bulan manual, sama dengan pola yang dipakai penjualan_view.dart,
   // supaya konsisten tanpa menambah dependensi intl.
-  static const List<String> _namaHari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+  static const List<String> _namaHari = [
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
+    'Minggu'
+  ];
   static const List<String> _namaBulan = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
   ];
 
   @override
   Widget build(BuildContext context) {
     final sekarang = DateTime.now();
     final hariIni = DateTime(sekarang.year, sekarang.month, sekarang.day);
-    final transaksiHariIni = penjualanList.where(
-      (p) => p.tanggal.isAfter(hariIni.subtract(const Duration(days: 1))),
-    ).toList();
+    final transaksiHariIni = penjualanList
+        .where(
+          (p) => p.tanggal.isAfter(hariIni.subtract(const Duration(days: 1))),
+        )
+        .toList();
 
-    final totalHariIni = transaksiHariIni.fold<double>(0.0, (t, p) => t + p.totalHarga);
+    final totalHariIni =
+        transaksiHariIni.fold<double>(0.0, (t, p) => t + p.totalHarga);
     final jumlahTransaksi = transaksiHariIni.length;
     final jumlahProduk = transaksiHariIni.fold<int>(
       0,
@@ -143,7 +256,10 @@ class _RingkasanHariIni extends StatelessWidget {
         children: [
           Text(
             'Penjualan hari ini',
-            style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontWeight: FontWeight.w600),
+            style: TextStyle(
+                color: Colors.grey.shade700,
+                fontSize: 13,
+                fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
           Text(
@@ -153,7 +269,10 @@ class _RingkasanHariIni extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'Rp${FormatHelper.rupiah(totalHariIni)}',
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.black87),
+            style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: Colors.black87),
           ),
           const SizedBox(height: 12),
           Row(
@@ -179,9 +298,11 @@ class _StatistikKecil extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(angka, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        Text(angka,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         const SizedBox(width: 6),
-        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+        Text(label,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
       ],
     );
   }
@@ -220,14 +341,16 @@ class _KeranjangBerjalan extends StatelessWidget {
               color: Colors.amber.shade50,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.shopping_cart_outlined, color: Colors.amber.shade700, size: 20),
+            child: Icon(Icons.shopping_cart_outlined,
+                color: Colors.amber.shade700, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$totalItem item di keranjang', style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text('$totalItem item di keranjang',
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(
                   'Rp${FormatHelper.rupiah(totalHarga)}',
@@ -242,7 +365,8 @@ class _KeranjangBerjalan extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.amber.shade700,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             child: const Text('Lanjutkan'),
@@ -269,7 +393,8 @@ class _GridMenu extends StatelessWidget {
             children: [
               Expanded(child: _menuTile(menuItems[i])),
               const SizedBox(width: 12),
-              if (i + 1 < menuItems.length) Expanded(child: _menuTile(menuItems[i + 1])),
+              if (i + 1 < menuItems.length)
+                Expanded(child: _menuTile(menuItems[i + 1])),
             ],
           ),
           if (i + 2 < menuItems.length) const SizedBox(height: 12),
@@ -295,7 +420,9 @@ class _GridMenu extends StatelessWidget {
             children: [
               Icon(item.icon, color: Colors.grey.shade800, size: 24),
               const SizedBox(height: 12),
-              Text(item.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              Text(item.label,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 14)),
             ],
           ),
         ),
@@ -337,13 +464,15 @@ class _StokMenipis extends StatelessWidget {
             children: [
               for (final p in itemShown)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Row(
                     children: [
                       Expanded(
                         child: Text(
                           p.namaProduk,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -351,7 +480,9 @@ class _StokMenipis extends StatelessWidget {
                       Text(
                         'sisa ${p.stok}',
                         style: TextStyle(
-                          color: p.stok <= 3 ? Colors.red.shade700 : Colors.grey.shade700,
+                          color: p.stok <= 3
+                              ? Colors.red.shade700
+                              : Colors.grey.shade700,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

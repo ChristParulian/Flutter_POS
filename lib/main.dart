@@ -7,6 +7,7 @@ import 'controllers/produk_controller.dart';
 import 'controllers/kategori_controller.dart';
 import 'controllers/keranjang_controller.dart';
 import 'controllers/penjualan_controller.dart';
+import 'controllers/pengaturan_controller.dart';
 import 'views/beranda_view.dart';
 import 'views/kategori_view.dart';
 import 'views/produk_view.dart';
@@ -42,6 +43,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<PenjualanController>(
           create: (context) => PenjualanController()..muatPenjualan(),
         ),
+        ChangeNotifierProvider<PengaturanController>(
+          create: (context) => PengaturanController()..muatPengaturan(),
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -55,7 +59,7 @@ class MyApp extends StatelessWidget {
         // entri routes['/'] (redundan/konflik). Splash berpindah ke HomeShell lewat
         // MaterialPageRoute langsung, bukan nama rute.
         routes: {
-          '/checkout': (context) => CheckoutView(),
+          '/checkout': (context) => const CheckoutView(),
         },
       ),
     );

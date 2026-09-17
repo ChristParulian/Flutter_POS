@@ -8,6 +8,7 @@ import '../models/kategori.dart';
 import '../models/produk.dart';
 import '../models/penjualan.dart';
 import '../models/keranjang.dart';
+import '../models/pengaturan.dart';
 
 class StokTidakCukupException implements Exception {
   final String namaProduk;
@@ -35,7 +36,7 @@ class DatabaseHelper {
     var dbPath = join(path, 'kategori_produk.db');
     return await openDatabase(
       dbPath,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await _createSchema(db);
       },
@@ -49,6 +50,9 @@ class DatabaseHelper {
           await db.execute('ALTER TABLE produk ADD COLUMN barcode TEXT');
           await db.execute('ALTER TABLE produk ADD COLUMN fotoProduk TEXT');
           await _createBarcodeIndex(db);
+        }
+        if (oldVersion < 4) {
+          await _createPengaturanTable(db);
         }
       },
     );
@@ -77,6 +81,7 @@ class DatabaseHelper {
     await _createBarcodeIndex(db);
 
     await _createPenjualanTables(db);
+    await _createPengaturanTable(db);
   }
 
   // Index unik untuk barcode. SQLite memperlakukan setiap NULL sebagai berbeda satu sama lain,
@@ -108,6 +113,24 @@ class DatabaseHelper {
         FOREIGN KEY (penjualanId) REFERENCES penjualan (id)
       )
     ''');
+  }
+
+  // Tabel pengaturan menyimpan identitas toko (nama + alamat) sebagai satu baris dengan
+  // id=1. Baris default langsung diisi supaya getPengaturan selalu punya hasil, berapapun
+  // riwayat upgrade database-nya.
+  static Future<void> _createPengaturanTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE pengaturan (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        namaToko TEXT NOT NULL,
+        alamatToko TEXT NOT NULL DEFAULT ''
+      )
+    ''');
+    await db.insert('pengaturan', {
+      'id': 1,
+      'namaToko': 'Smart Toko',
+      'alamatToko': '',
+    });
   }
 
   // Migrasi satu kali data lama dari penjualan.json (versi sebelum SQLite) ke tabel penjualan
@@ -293,5 +316,23 @@ class DatabaseHelper {
     final db = await database;
     await db.delete('penjualan_item', where: 'penjualanId = ?', whereArgs: [id]);
     await db.delete('penjualan', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ================= Pengaturan toko =================
+
+  static Future<PengaturanToko?> getPengaturan() async {
+    final db = await database;
+    final maps = await db.query('pengaturan', where: 'id = 1', limit: 1);
+    if (maps.isEmpty) return null;
+    return PengaturanToko.fromMap(maps.first);
+  }
+
+  static Future<void> simpanPengaturan(PengaturanToko pengaturan) async {
+    final db = await database;
+    await db.insert(
+      'pengaturan',
+      {'id': 1, ...pengaturan.toMap()},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 }
