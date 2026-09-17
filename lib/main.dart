@@ -233,19 +233,15 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  int _index = 0;
+  // Indeks tab Beranda di bottom navigation. Semua back/navigasi "naik tingkat" berujung ke
+  // tab ini - lihat _handleBack.
+  static const int _berandaIndex = 0;
 
-  // Riwayat tab yang pernah dikunjungi (bukan Navigator stack, karena pindah tab tidak
-  // mendorong rute baru). Dipakai supaya tombol back HP menelusuri tab sebelumnya dulu
-  // (mis. Produk -> Keranjang -> back -> Produk), bukan langsung menutup aplikasi.
-  final List<int> _tabHistory = [];
+  int _index = 0;
 
   void _pindahTab(int i) {
     if (i == _index) return;
-    setState(() {
-      _tabHistory.add(_index);
-      _index = i;
-    });
+    setState(() => _index = i);
   }
 
   Future<bool> _konfirmasiKeluar() async {
@@ -268,11 +264,13 @@ class _HomeShellState extends State<HomeShell> {
     return keluar ?? false;
   }
 
-  // Kalau masih ada tab sebelumnya di riwayat, tombol back kembali ke situ dulu.
-  // Kalau riwayat sudah habis (sudah di titik awal), baru tampilkan konfirmasi keluar.
+  // Tombol back berperilaku sebagai "naik satu tingkat", bukan "mundur satu langkah":
+  // di tab mana pun selain Beranda, back mengembalikan ke Beranda; di Beranda sendiri,
+  // back baru berarti keluar dari aplikasi - dan itu pun selalu lewat konfirmasi dulu
+  // supaya kasir tidak kehilangan posisinya karena tombol yang tersenggol.
   Future<void> _handleBack() async {
-    if (_tabHistory.isNotEmpty) {
-      setState(() => _index = _tabHistory.removeLast());
+    if (_index != _berandaIndex) {
+      setState(() => _index = _berandaIndex);
       return;
     }
     if (await _konfirmasiKeluar()) {

@@ -7,7 +7,9 @@ import '../helpers/database_helper.dart';
 import '../helpers/format_helper.dart';
 import '../helpers/struk_helper.dart';
 import '../models/keranjang.dart';
+import '../models/produk.dart';
 import '../widgets/numpad.dart';
+import 'barcode_scanner_view.dart';
 
 class CheckoutView extends StatefulWidget {
   const CheckoutView({super.key});
@@ -72,6 +74,84 @@ class _CheckoutViewState extends State<CheckoutView> {
     });
   }
 
+  // Mengubah jumlah item yang sedang dibayar. Dipakai bersama oleh stepper +/- di kartu item
+  // dan tombol aksi cepat, supaya batas stok selalu diperiksa di satu tempat.
+  void _isiUangPas() {
+    setState(() {
+      bayarController.text = total.round().toString();
+      kembalian = 0;
+    });
+  }
+
+  // Nominal yang diketik langsung menggantikan isi field (bukan ditambahkan), karena tombol
+  // ini dimaksudkan untuk melompat ke angka bulat, bukan menambah digit ke angka sebelumnya.
+  void _setNominalCepat(int nominal) {
+    setState(() {
+      bayarController.text = nominal.toString();
+      kembalian = nominal - total;
+    });
+  }
+
+  // Dua nominal pembulatan ke atas dari total (mis. 47.500 -> 50.000 dan 100.000) supaya
+  // pilihan yang ditawarkan mengikuti nilai belanja, bukan angka mati yang sering meleset.
+  List<int> _nominalPembulatan() {
+    final bawah = total.ceil();
+    final ke50rb = ((bawah + 49999) ~/ 50000) * 50000;
+    final ke100rb = ((bawah + 99999) ~/ 100000) * 100000;
+    return {
+      if (ke50rb > bawah) ke50rb,
+      if (ke100rb > ke50rb) ke100rb,
+    }.toList();
+  }
+
+  // Scan barcode di tengah checkout berguna saat kasir lupa satu barang setelah total dihitung:
+  // dibanding balik ke halaman sebelumnya, cukup pindai di sini, produk otomatis masuk ke
+  // keranjang (dan ke daftar yang sedang dibayar), lalu user selesai tanpa pindah layar.
+  Future<void> _bukaScannerKamera() async {
+    final kode = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const BarcodeScannerView(title: 'Pindai Barcode')),
+    );
+    if (!mounted || kode == null || kode.isEmpty) return;
+
+    final produkController = Provider.of<ProdukController>(context, listen: false);
+    final keranjangController = Provider.of<KeranjangController>(context, listen: false);
+
+    Produk? produk;
+    for (final p in produkController.produkList) {
+      if (p.barcode == kode) {
+        produk = p;
+        break;
+      }
+    }
+
+    if (produk == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Barcode "$kode" tidak ditemukan'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
+    final sisaStok = produk.stok - keranjangController.jumlahDiKeranjang(produk.id!);
+    if (sisaStok <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Stok "${produk.namaProduk}" habis'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
+    keranjangController.tambahKeKeranjang(
+      Keranjang(id: produk.id!, namaProduk: produk.namaProduk, harga: produk.harga, jumlah: 1),
+    );
+    setState(() {
+      keranjangCheckout = keranjangController.keranjangList;
+    });
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('"${produk.namaProduk}" ditambahkan'), duration: const Duration(milliseconds: 1200)),
+    );
+  }
+
   Future<void> _prosesCheckout() async {
     final penjualanController = Provider.of<PenjualanController>(context, listen: false);
     final keranjangController = Provider.of<KeranjangController>(context, listen: false);
@@ -112,7 +192,16 @@ class _CheckoutViewState extends State<CheckoutView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Checkout')),
+      appBar: AppBar(
+        title: const Text('Checkout'),
+        actions: [
+          IconButton(
+            tooltip: 'Pindai Barcode',
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: _bukaScannerKamera,
+          ),
+        ],
+      ),
       body: keranjangCheckout.isEmpty
           ? Center(child: Text('Tidak ada item untuk dibayar.', style: TextStyle(color: Colors.grey.shade600)))
           : Column(
@@ -225,6 +314,31 @@ class _CheckoutViewState extends State<CheckoutView> {
                           ],
                         ),
                         const SizedBox(height: 12),
+                        // Nominal cepat: uang pas (nominal paling sering dipakai) lalu kelipatan
+                        // bulat di atas total, supaya kasir tidak perlu mengetik digit per digit.
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _isiUangPas,
+                                child: const Text('Uang Pas'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ..._nominalPembulatan().map(
+                              (nominal) => Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: OutlinedButton(
+                                    onPressed: () => _setNominalCepat(nominal),
+                                    child: Text(FormatHelper.ringkas(nominal)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
                         Numpad(
                           value: bayarController.text,
                           onChanged: (newValue) {

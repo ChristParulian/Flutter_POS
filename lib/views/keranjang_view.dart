@@ -115,7 +115,11 @@ class _KeranjangViewState extends State<KeranjangView> {
 
     final keranjangController = context.read<KeranjangController>();
     final selectedItems = keranjangController.keranjangList.where((item) => selectedKeranjangIds.contains(item.id)).toList();
-    Navigator.pushNamed(context, '/checkout', arguments: selectedItems);
+    await Navigator.pushNamed(context, '/checkout', arguments: selectedItems);
+    if (!mounted) return;
+    // Transaksi yang selesai di Checkout sudah memotong stok di database; muat ulang supaya
+    // daftar produk (termasuk label sisa stok) ikut terbarui. Lihat juga jalur tombol Checkout.
+    await context.read<ProdukController>().loadProduk();
   }
 
   @override
@@ -387,9 +391,16 @@ class _KeranjangViewState extends State<KeranjangView> {
                   ElevatedButton.icon(
                     onPressed: selectedKeranjangIds.isEmpty
                         ? null
-                        : () {
+                        : () async {
                             final selectedItems = items.where((item) => selectedKeranjangIds.contains(item.id)).toList();
-                            Navigator.pushNamed(context, '/checkout', arguments: selectedItems);
+                            await Navigator.pushNamed(context, '/checkout', arguments: selectedItems);
+                            if (!mounted) return;
+                            // Stok di database sudah dipotong oleh transaksi tadi, tapi daftar
+                            // produk di memori masih memegang nilai lama - tanpa dimuat ulang,
+                            // kartu produk tetap menampilkan sisa stok sebelum transaksi.
+                            await this.context.read<ProdukController>().loadProduk();
+                            if (!mounted) return;
+                            setState(() => selectedKeranjangIds.removeWhere((id) => !keranjangController.keranjangList.any((item) => item.id == id)));
                           },
                     icon: const Icon(Icons.point_of_sale),
                     label: const Text('Checkout'),

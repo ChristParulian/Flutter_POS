@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../controllers/produk_controller.dart';
 import '../controllers/kategori_controller.dart';
 import '../helpers/foto_helper.dart';
 import '../helpers/format_helper.dart';
+import '../helpers/ribuan_input_formatter.dart';
 import '../models/produk.dart';
 import '../models/kategori.dart';
 import '../widgets/foto_thumbnail.dart';
@@ -271,9 +273,14 @@ class _ProdukViewState extends State<ProdukView> {
   Future<void> _showProdukDialog(BuildContext context, {Produk? produk}) async {
     final isEdit = produk != null;
     final namaController = TextEditingController(text: produk?.namaProduk ?? '');
-    final hargaController = TextEditingController(text: produk != null ? produk.harga.toStringAsFixed(0) : '');
+    // Harga diisi dalam format tampilan (bertitik ribuan) supaya konsisten dengan yang tampil
+    // di daftar produk dan struk - dan supaya mengetik "10000" langsung terlihat sebagai 10.000.
+    final hargaController = TextEditingController(text: produk != null ? FormatHelper.rupiah(produk.harga) : '');
     final stokController = TextEditingController(text: produk != null ? produk.stok.toString() : '0');
     final barcodeController = TextEditingController(text: produk?.barcode ?? '');
+    // Field stok dibatasi digit murni: angka stok tidak pernah berformat ribuan, jadi pemisah
+    // apa pun di situ cuma akan ditolak validasi dan membingungkan.
+    final stokFormatter = FilteringTextInputFormatter.digitsOnly;
     final kategoriList = Provider.of<KategoriController>(context, listen: false).kategoriList;
     // Jika kategori produk sudah tidak ada lagi di daftar (data lama yatim), jangan pilihkan nilai yang tidak valid ke dropdown.
     int? selectedKategoriId = produk != null && kategoriList.any((k) => k.id == produk.kategoriId) ? produk.kategoriId : null;
@@ -330,12 +337,14 @@ class _ProdukViewState extends State<ProdukView> {
                     TextField(
                       controller: hargaController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: false),
+                      inputFormatters: [RibuanInputFormatter()],
                       decoration: const InputDecoration(labelText: 'Harga', prefixText: 'Rp '),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: stokController,
                       keyboardType: TextInputType.number,
+                      inputFormatters: [stokFormatter],
                       decoration: const InputDecoration(labelText: 'Stok'),
                     ),
                     const SizedBox(height: 12),
@@ -373,7 +382,9 @@ class _ProdukViewState extends State<ProdukView> {
                 TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
                 ElevatedButton(
                   onPressed: () async {
-                    final harga = double.tryParse(hargaController.text.trim());
+                    // Harga dibaca lewat parseRibuan (bukan double.tryParse) karena teksnya
+                    // mengandung titik pemisah ribuan, mis. "10.000".
+                    final harga = FormatHelper.parseRibuan(hargaController.text);
                     final stok = int.tryParse(stokController.text.trim());
                     if (harga == null || stok == null || selectedKategoriId == null) {
                       setDialogState(() => errorText = 'Lengkapi semua data dengan angka yang valid');

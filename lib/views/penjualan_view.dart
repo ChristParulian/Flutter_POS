@@ -6,6 +6,9 @@ import '../helpers/format_helper.dart';
 import '../helpers/struk_helper.dart';
 import '../models/penjualan.dart';
 
+// Riwayat penjualan dikelompokkan per hari (bukan daftar datar) supaya kasir bisa langsung
+// menutup buku harian: tiap kelompok dibuka dengan satu baris rekapitulasi (jumlah transaksi,
+// rupiah yang masuk, jumlah produk terjual), lalu transaksi-transaksinya di bawahnya.
 class PenjualanView extends StatefulWidget {
   const PenjualanView({super.key});
 
@@ -13,10 +16,29 @@ class PenjualanView extends StatefulWidget {
   State<PenjualanView> createState() => _PenjualanViewState();
 }
 
+// Satu hari dalam riwayat: tanggalnya plus transaksi-transaksi yang terjadi di hari itu.
+// Dipakai untuk memasangkan rekapitulasi dengan daftar transaksinya.
+class _KelompokHarian {
+  final DateTime tanggal;
+  final List<Penjualan> transaksi;
+
+  _KelompokHarian(this.tanggal, this.transaksi);
+
+  double get totalPenjualan => transaksi.fold<double>(0.0, (t, p) => t + p.totalHarga);
+  int get jumlahTransaksi => transaksi.length;
+  int get jumlahProdukTerjual => transaksi.fold<int>(0, (t, p) => t + p.daftarProduk.fold<int>(0, (s, item) => s + item.jumlah));
+}
+
 class _PenjualanViewState extends State<PenjualanView> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   DateTimeRange? _rentangTanggal;
+
+  static const List<String> _namaHari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+  static const List<String> _namaBulan = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  ];
 
   @override
   void initState() {
@@ -62,18 +84,68 @@ class _PenjualanViewState extends State<PenjualanView> {
     return sama ? format.format(rentang.start) : '${format.format(rentang.start)} - ${format.format(rentang.end)}';
   }
 
+  // Ambil bagian tanggalnya saja sebagai kunci kelompok. Transaksi yang terjadi di hari yang
+  // sama selalu jatuh ke kunci yang identik, sedangkan urutan menurun dari database membuat
+  // hari terbaru muncul lebih dulu.
+  DateTime _hariDari(DateTime tanggal) => DateTime(tanggal.year, tanggal.month, tanggal.day);
+
+  // Label hari dibuat relatif dulu ("Hari ini", "Kemarin") karena itu yang paling cepat
+  // dikenali kasir; hari yang lebih lama baru ditulis lengkap dengan nama hari.
+  String _labelHari(DateTime hari) {
+    final sekarang = DateTime.now();
+    final selisih = _hariDari(sekarang).difference(hari).inDays;
+    // Dibuat manual (bukan DateFormat ber-locale) supaya tidak perlu inisialisasi data simbol
+    // tanggal per locale, dan nama hari/bulan selalu konsisten Bahasa Indonesia.
+    final tanggalLengkap = '${_namaHari[hari.weekday - 1]}, ${hari.day} ${_namaBulan[hari.month - 1]} ${hari.year}';
+    if (selisih == 0) return 'Hari ini · $tanggalLengkap';
+    if (selisih == 1) return 'Kemarin · $tanggalLengkap';
+    return tanggalLengkap;
+  }
+
+  // Transaksi dipecah per hari tanpa mengubah urutannya, lalu tiap kelompok dihitung totalnya.
+  List<_KelompokHarian> _kelompokkanPerHari(List<Penjualan> transaksi) {
+    final urutanHari = <DateTime>[];
+    final peta = <DateTime, List<Penjualan>>{};
+
+    for (final p in transaksi) {
+      final hari = _hariDari(p.tanggal);
+      final daftar = peta.putIfAbsent(hari, () {
+        urutanHari.add(hari);
+        return <Penjualan>[];
+      });
+      daftar.add(p);
+    }
+
+    return urutanHari.map((hari) => _KelompokHarian(hari, peta[hari]!)).toList();
+  }
+
+  // Ringkasan produk dalam satu transaksi. Nama produk ditulis apa adanya supaya kasir bisa
+  // memastikan barang apa yang terjual tanpa harus membuka struk; jumlah lebih dari satu
+  // dibuat eksplisit ("Beras 5kg x2") agar tidak terbaca sebagai dua barang berbeda.
+  String _ringkasanProduk(Penjualan penjualan) {
+    return penjualan.daftarProduk
+        .map((item) => item.jumlah > 1 ? '${item.namaProduk} x${item.jumlah}' : item.namaProduk)
+        .join(', ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final penjualanController = context.watch<PenjualanController>();
 
+    // Pencarian mencocokkan teks yang benar-benar terlihat di daftar (tanggal dan tulisan
+    // "Hari ini"/"Kemarin" ikut dicari) plus nama produk, supaya query seperti "produk a"
+    // atau "kemarin" sama-sama masuk akal bagi kasir.
     var filtered = penjualanController.daftarPenjualan.where((p) => _dalamRentang(p.tanggal)).toList();
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       filtered = filtered.where((p) {
-        return p.formattedTanggal.toLowerCase().contains(query) ||
+        return _labelHari(_hariDari(p.tanggal)).toLowerCase().contains(query) ||
+            p.formattedTanggal.toLowerCase().contains(query) ||
             p.daftarProduk.any((item) => item.namaProduk.toLowerCase().contains(query));
       }).toList();
     }
+
+    final kelompok = _kelompokkanPerHari(filtered);
 
     return Scaffold(
       appBar: AppBar(
@@ -118,38 +190,24 @@ class _PenjualanViewState extends State<PenjualanView> {
           Expanded(
             child: penjualanController.isLoading && penjualanController.daftarPenjualan.isEmpty
                 ? const Center(child: CircularProgressIndicator())
-                : filtered.isEmpty
+                : kelompok.isEmpty
                     ? Center(
                         child: Text(
                           penjualanController.daftarPenjualan.isEmpty ? 'Belum ada transaksi.' : 'Tidak ada transaksi yang cocok.',
                           style: TextStyle(color: Colors.grey.shade600),
                         ),
                       )
-                    : ListView.separated(
+                    : ListView.builder(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemCount: kelompok.length,
                         itemBuilder: (context, index) {
-                          final penjualan = filtered[index];
-                          return Card(
-                            child: ListTile(
-                              title: Text(penjualan.formattedTanggal, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: Text('${penjualan.daftarProduk.length} produk'),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text('Rp${FormatHelper.rupiah(penjualan.totalHarga)}', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade800)),
-                                  IconButton(
-                                    icon: const Icon(Icons.print_outlined),
-                                    onPressed: () => _printPenjualan(penjualan),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                    onPressed: () => _hapusPenjualan(context, penjualanController, penjualan),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          final grup = kelompok[index];
+                          return _HariSection(
+                            grup: grup,
+                            labelHari: _labelHari(grup.tanggal),
+                            ringkasanProduk: _ringkasanProduk,
+                            onPrint: _printPenjualan,
+                            onDelete: (penjualan) => _hapusPenjualan(context, penjualanController, penjualan),
                           );
                         },
                       ),
@@ -191,5 +249,166 @@ class _PenjualanViewState extends State<PenjualanView> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal mencetak: $e')));
     }
+  }
+}
+
+// Satu blok hari: header rekapitulasi + transaksi-transaksinya. Pemisah antar hari adalah
+// header ini sendiri - warnanya dibuat berbeda dari kartu transaksi supaya batas pergantian
+// hari langsung terlihat saat menggulir, tanpa perlu garis dekoratif tambahan.
+class _HariSection extends StatelessWidget {
+  final _KelompokHarian grup;
+  final String labelHari;
+  final String Function(Penjualan) ringkasanProduk;
+  final void Function(Penjualan) onPrint;
+  final void Function(Penjualan) onDelete;
+
+  const _HariSection({
+    required this.grup,
+    required this.labelHari,
+    required this.ringkasanProduk,
+    required this.onPrint,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _RekapHarian(grup: grup, labelHari: labelHari),
+          const SizedBox(height: 8),
+          for (final penjualan in grup.transaksi)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _KartuTransaksi(
+                penjualan: penjualan,
+                ringkasanProduk: ringkasanProduk(penjualan),
+                onPrint: () => onPrint(penjualan),
+                onDelete: () => onDelete(penjualan),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RekapHarian extends StatelessWidget {
+  final _KelompokHarian grup;
+  final String labelHari;
+
+  const _RekapHarian({required this.grup, required this.labelHari});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.calendar_today, size: 16, color: Colors.amber.shade800),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(labelHari, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                const SizedBox(height: 2),
+                Text(
+                  '${grup.jumlahTransaksi} transaksi · ${grup.jumlahProdukTerjual} produk terjual',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Rp${FormatHelper.rupiah(grup.totalPenjualan)}',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: Colors.amber.shade800),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KartuTransaksi extends StatelessWidget {
+  final Penjualan penjualan;
+  final String ringkasanProduk;
+  final VoidCallback onPrint;
+  final VoidCallback onDelete;
+
+  const _KartuTransaksi({
+    required this.penjualan,
+    required this.ringkasanProduk,
+    required this.onPrint,
+    required this.onDelete,
+  });
+
+  String get _jam => DateFormat('HH:mm').format(penjualan.tanggal);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Transaksi $_jam',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    ringkasanProduk,
+                    style: const TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${penjualan.daftarProduk.length} jenis produk',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'Rp${FormatHelper.rupiah(penjualan.totalHarga)}',
+                  style: TextStyle(fontWeight: FontWeight.w700, color: Colors.amber.shade800),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Cetak struk',
+                      icon: const Icon(Icons.print_outlined),
+                      onPressed: onPrint,
+                    ),
+                    IconButton(
+                      tooltip: 'Hapus transaksi',
+                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                      onPressed: onDelete,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
