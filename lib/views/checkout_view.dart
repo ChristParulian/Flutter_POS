@@ -9,7 +9,6 @@ import '../helpers/struk_helper.dart';
 import '../models/keranjang.dart';
 import '../models/produk.dart';
 import '../widgets/numpad.dart';
-import '../widgets/foto_thumbnail.dart';
 import 'barcode_scanner_view.dart';
 
 class CheckoutView extends StatefulWidget {
@@ -254,132 +253,114 @@ class _CheckoutViewState extends State<CheckoutView> {
                       final habis = produk == null ? false : produk.stok <= 0;
                       final sisaStok = produk == null ? 0 : produk.stok;
 
-                      return Stack(
-                        children: [
-                          Card(
-                            clipBehavior: Clip.antiAlias,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                AspectRatio(
-                                  aspectRatio: 4 / 3,
-                                  child: FotoThumbnail(
-                                    path: produk?.fotoProduk,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    borderRadius: 0,
-                                  ),
-                                ),
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        item.namaProduk,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w600),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 4,
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 1),
-                                            decoration: BoxDecoration(
-                                              color: habis
-                                                  ? Colors.red.shade50
-                                                  : Colors.green.shade50,
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              habis
-                                                  ? 'Stok habis'
-                                                  : 'Stok $sisaStok',
-                                              style: TextStyle(
-                                                color: habis
-                                                    ? Colors.red.shade700
-                                                    : Colors.green.shade700,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 11,
-                                              ),
-                                            ),
+                      // Kartu item dibuat ringkas tanpa foto: di halaman checkout kasir
+                      // butuh informasi padat (nama, stok, jumlah, harga) supaya daftar
+                      // item yang panjang tetap muat satu layar.
+                      return Card(
+                        clipBehavior: Clip.antiAlias,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.namaProduk,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: habis
+                                                ? Colors.red.shade50
+                                                : Colors.green.shade50,
+                                            borderRadius:
+                                                BorderRadius.circular(6),
                                           ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              _StepperButton(
-                                                icon: Icons.remove,
-                                                onTap: item.jumlah > 1
-                                                    ? () => _ubahJumlah(
-                                                        item, item.jumlah - 1)
-                                                    : null,
-                                              ),
-                                              SizedBox(
-                                                width: 36,
-                                                child: Text(
-                                                  '${item.jumlah}',
-                                                  textAlign: TextAlign.center,
-                                                  style: const TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.w600),
-                                                ),
-                                              ),
-                                              _StepperButton(
-                                                icon: Icons.add,
-                                                onTap: () => _ubahJumlah(
-                                                    item, item.jumlah + 1),
-                                              ),
-                                            ],
-                                          ),
-                                          Text(
-                                            'Rp${FormatHelper.rupiah(item.totalHarga)}',
+                                          child: Text(
+                                            habis
+                                                ? 'Stok habis'
+                                                : 'Stok $sisaStok',
                                             style: TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.amber.shade800),
+                                              color: habis
+                                                  ? Colors.red.shade700
+                                                  : Colors.green.shade700,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 11,
+                                            ),
                                           ),
-                                        ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    'Rp${FormatHelper.rupiah(item.totalHarga)}',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.amber.shade800),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _StepperButton(
+                                        icon: Icons.remove,
+                                        onTap: item.jumlah > 1
+                                            ? () => _ubahJumlah(
+                                                item, item.jumlah - 1)
+                                            : null,
+                                      ),
+                                      SizedBox(
+                                        width: 36,
+                                        child: Text(
+                                          '${item.jumlah}',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w600),
+                                        ),
+                                      ),
+                                      _StepperButton(
+                                        icon: Icons.add,
+                                        onTap: () =>
+                                            _ubahJumlah(item, item.jumlah + 1),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Positioned(
-                            right: 4,
-                            top: 4,
-                            child: SizedBox(
-                              width: 44,
-                              height: 44,
-                              child: IconButton(
-                                icon: const Icon(Icons.delete_outline,
-                                    color: Colors.redAccent, size: 20),
-                                style: IconButton.styleFrom(
-                                  backgroundColor:
-                                      Colors.white.withOpacity(0.85),
-                                ),
-                                tooltip: 'Hapus item',
-                                onPressed: () => _hapusItem(item),
+                                ],
                               ),
-                            ),
+                              SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.delete_outline,
+                                      color: Colors.redAccent, size: 20),
+                                  tooltip: 'Hapus item',
+                                  onPressed: () => _hapusItem(item),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       );
                     },
                   ),

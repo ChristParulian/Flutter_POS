@@ -36,13 +36,14 @@ class DatabaseHelper {
     var dbPath = join(path, 'kategori_produk.db');
     return await openDatabase(
       dbPath,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await _createSchema(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          await db.execute('ALTER TABLE produk ADD COLUMN stok INTEGER NOT NULL DEFAULT 0');
+          await db.execute(
+              'ALTER TABLE produk ADD COLUMN stok INTEGER NOT NULL DEFAULT 0');
           await _createPenjualanTables(db);
           await _migrateOldPenjualanJson(db);
         }
@@ -53,6 +54,15 @@ class DatabaseHelper {
         }
         if (oldVersion < 4) {
           await _createPengaturanTable(db);
+        }
+        if (oldVersion < 5) {
+          // Pengaturan dibuat ulang di versi < 4, jadi kolom logoPath mungkin sudah ada
+          // (tabel baru) atau belum (tabel v4). Cek dulu supaya ALTER tidak dobel.
+          final cols = await db.rawQuery('PRAGMA table_info(pengaturan)');
+          final punyaLogo = cols.any((c) => c['name'] == 'logoPath');
+          if (!punyaLogo) {
+            await db.execute('ALTER TABLE pengaturan ADD COLUMN logoPath TEXT');
+          }
         }
       },
     );
@@ -88,7 +98,8 @@ class DatabaseHelper {
   // jadi banyak produk boleh tanpa barcode (NULL), tapi barcode yang sama tidak boleh dipakai
   // dua produk sekaligus. Barcode kosong dari form harus disimpan sebagai NULL, bukan string ''.
   static Future<void> _createBarcodeIndex(Database db) async {
-    await db.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_produk_barcode ON produk (barcode)');
+    await db.execute(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_produk_barcode ON produk (barcode)');
   }
 
   static Future<void> _createPenjualanTables(Database db) async {
@@ -123,13 +134,15 @@ class DatabaseHelper {
       CREATE TABLE pengaturan (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         namaToko TEXT NOT NULL,
-        alamatToko TEXT NOT NULL DEFAULT ''
+        alamatToko TEXT NOT NULL DEFAULT '',
+        logoPath TEXT
       )
     ''');
     await db.insert('pengaturan', {
       'id': 1,
       'namaToko': 'Smart Toko',
       'alamatToko': '',
+      'logoPath': null,
     });
   }
 
@@ -243,7 +256,8 @@ class DatabaseHelper {
   // Mencari produk berdasarkan barcode persis. Dipakai untuk validasi keunikan saat menyimpan produk.
   static Future<Produk?> getProdukByBarcode(String barcode) async {
     final db = await database;
-    final maps = await db.query('produk', where: 'barcode = ?', whereArgs: [barcode], limit: 1);
+    final maps = await db.query('produk',
+        where: 'barcode = ?', whereArgs: [barcode], limit: 1);
     if (maps.isEmpty) return null;
     return Produk.fromMap(maps.first);
   }
@@ -256,8 +270,10 @@ class DatabaseHelper {
     final db = await database;
     return await db.transaction((txn) async {
       for (final item in penjualan.daftarProduk) {
-        final rows = await txn.query('produk', columns: ['stok'], where: 'id = ?', whereArgs: [item.id]);
-        final stokSaatIni = rows.isNotEmpty ? (rows.first['stok'] as int? ?? 0) : 0;
+        final rows = await txn.query('produk',
+            columns: ['stok'], where: 'id = ?', whereArgs: [item.id]);
+        final stokSaatIni =
+            rows.isNotEmpty ? (rows.first['stok'] as int? ?? 0) : 0;
         if (stokSaatIni < item.jumlah) {
           throw StokTidakCukupException(item.namaProduk, stokSaatIni);
         }
@@ -314,7 +330,8 @@ class DatabaseHelper {
 
   static Future<void> deletePenjualan(int id) async {
     final db = await database;
-    await db.delete('penjualan_item', where: 'penjualanId = ?', whereArgs: [id]);
+    await db
+        .delete('penjualan_item', where: 'penjualanId = ?', whereArgs: [id]);
     await db.delete('penjualan', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -329,10 +346,15 @@ class DatabaseHelper {
 
   static Future<void> simpanPengaturan(PengaturanToko pengaturan) async {
     final db = await database;
-    await db.insert(
-      'pengaturan',
-      {'id': 1, ...pengaturan.toMap()},
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    try {
+      await db.insert(
+        'pengaturan',
+        {'id': 1, ...pengaturan.toMap()},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (e) {
+      print('DatabaseHelper.simpanPengaturan error: $e');
+      rethrow;
+    }
   }
 }

@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../controllers/penjualan_controller.dart';
 import '../controllers/keranjang_controller.dart';
 import '../controllers/produk_controller.dart';
 import '../controllers/pengaturan_controller.dart';
 import '../helpers/format_helper.dart';
+import '../helpers/foto_helper.dart';
 import '../models/penjualan.dart';
 import '../models/keranjang.dart';
 import '../models/produk.dart';
@@ -45,7 +49,14 @@ class BerandaView extends StatelessWidget {
         children: [
           Row(
             children: [
-              Image.asset('assets/images/logo.png', width: 44, height: 44),
+              // Logo toko: pakai logo kustom dari pengaturan kalau ada, kalau belum ada
+              // (atau file-nya hilang) kembali ke logo bawaan aplikasi.
+              Consumer<PengaturanController>(
+                builder: (context, pengaturan, child) => _LogoBeranda(
+                  logoPath: pengaturan.logoPath,
+                  size: 44,
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -105,68 +116,166 @@ class BerandaView extends StatelessWidget {
     );
   }
 
-  // Dialog edit identitas toko (nama + alamat). Nilai yang disimpan dipakai langsung
-  // sebagai header struk - lihat StrukHelper.
+  // Dialog edit identitas toko (nama + alamat + logo). Nilai yang disimpan dipakai
+  // langsung sebagai header struk - lihat StrukHelper. Logo dikelola terpisah dari
+  // teks: pilih logo baru akan menyalin file-nya ke folder aplikasi (via FotoHelper)
+  // dan menyimpan path-nya, sedangkan "Hapus" kembali ke logo bawaan aplikasi.
   Future<void> _bukaDialogEditToko(BuildContext context) async {
     final controller = context.read<PengaturanController>();
     final namaController = TextEditingController(text: controller.namaToko);
     final alamatController = TextEditingController(text: controller.alamatToko);
+    // Logo yang sedang dipilih di dialog; null berarti pakai logo bawaan.
+    String? logoDipilih = controller.logoPath;
 
     final tersimpan = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Identitas Toko'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: namaController,
-              decoration: const InputDecoration(labelText: 'Nama toko'),
-              textCapitalization: TextCapitalization.words,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Identitas Toko'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: _LogoBeranda(logoPath: logoDipilih, size: 56),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text('Logo toko (opsional)',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _pilihLogo(dialogContext, setDialogState,
+                        (path) => logoDipilih = path),
+                    icon: const Icon(Icons.photo_library_outlined, size: 18),
+                    label: const Text('Pilih'),
+                  ),
+                  if (logoDipilih != null)
+                    IconButton(
+                      tooltip: 'Hapus logo (kembali ke logo bawaan)',
+                      icon: const Icon(Icons.delete_outline,
+                          color: Colors.redAccent),
+                      onPressed: () => setDialogState(() => logoDipilih = null),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: namaController,
+                decoration: const InputDecoration(labelText: 'Nama toko'),
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: alamatController,
+                decoration:
+                    const InputDecoration(labelText: 'Alamat toko (opsional)'),
+                maxLines: 2,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal'),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: alamatController,
-              decoration:
-                  const InputDecoration(labelText: 'Alamat toko (opsional)'),
-              maxLines: 2,
-              textCapitalization: TextCapitalization.sentences,
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Simpan'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Simpan'),
-          ),
-        ],
       ),
     );
 
     // Baca nilai sebelum dispose supaya controller masih hidup saat teksnya dipakai.
     final nama = namaController.text.trim();
     final alamat = alamatController.text.trim();
+    final logoAsli = controller.logoPath;
     namaController.dispose();
     alamatController.dispose();
 
     if (!context.mounted) return;
-    if (tersimpan != true) return;
+    if (tersimpan != true) {
+      // Dialog ditutup tanpa disimpan tapi sempat memilih logo baru: hapus file yang
+      // sudah ter-copy supaya tidak jadi sampah tak terpakai.
+      if (logoDipilih != null && logoDipilih != logoAsli) {
+        await FotoHelper.hapusFotoJikaAda(logoDipilih);
+      }
+      return;
+    }
     if (nama.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Nama toko tidak boleh kosong')),
       );
       return;
     }
-    await controller.simpan(PengaturanToko(namaToko: nama, alamatToko: alamat));
+    // Logo lama diganti: hapus file lamanya supaya tidak menumpuk di folder aplikasi.
+    if (logoAsli != null && logoDipilih != logoAsli) {
+      await FotoHelper.hapusFotoJikaAda(logoAsli);
+    }
+    try {
+      await controller.simpan(PengaturanToko(
+          namaToko: nama, alamatToko: alamat, logoPath: logoDipilih));
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Gagal menyimpan identitas toko: ${e.toString()}')),
+      );
+      return;
+    }
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Identitas toko disimpan')),
     );
+  }
+
+  // Pilih logo baru dari kamera/galeri (pola sama dengan foto produk di produk_view),
+  // salin ke folder aplikasi, lalu beri tahu dialog via callback dengan path baru.
+  Future<void> _pilihLogo(
+    BuildContext dialogContext,
+    StateSetter setDialogState,
+    void Function(String path) onPicked,
+  ) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: dialogContext,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Ambil dari Kamera'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pilih dari Galeri'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final file = await ImagePicker()
+        .pickImage(source: source, imageQuality: 90, maxWidth: 1024);
+    if (file == null) return;
+
+    final path = await FotoHelper.simpanLogo(File(file.path));
+    onPicked(path);
+    setDialogState(() {});
   }
 }
 
@@ -189,6 +298,23 @@ class _JudulBagian extends StatelessWidget {
       style: const TextStyle(
           fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87),
     );
+  }
+}
+
+// Tampilkan logo toko di header Beranda (fallback ke asset bila belum ada
+// logo kustom atau file-nya hilang).
+class _LogoBeranda extends StatelessWidget {
+  final String? logoPath;
+  final double size;
+
+  const _LogoBeranda({required this.logoPath, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    if (logoPath != null && File(logoPath!).existsSync()) {
+      return Image.file(File(logoPath!), width: size, height: size);
+    }
+    return Image.asset('assets/images/logo.png', width: size, height: size);
   }
 }
 

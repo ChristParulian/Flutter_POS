@@ -19,7 +19,11 @@ class Penjualan {
   });
 
   String get formattedTanggal {
-    return DateFormat('yyyy-MM-dd HH:mm:ss').format(tanggal);
+    return DateFormat('dd/MM/yyyy').format(tanggal);
+  }
+
+  String get formattedTanggalWaktu {
+    return DateFormat('dd/MM/yyyy HH:mm:ss').format(tanggal);
   }
 
   // Mengubah data induk penjualan menjadi map (tanpa daftar item, disimpan di tabel terpisah)
@@ -33,7 +37,8 @@ class Penjualan {
     };
   }
 
-  factory Penjualan.fromMap(Map<String, dynamic> map, List<Keranjang> daftarProduk) {
+  factory Penjualan.fromMap(
+      Map<String, dynamic> map, List<Keranjang> daftarProduk) {
     return Penjualan(
       id: map['id'],
       tanggal: DateTime.parse(map['tanggal']),

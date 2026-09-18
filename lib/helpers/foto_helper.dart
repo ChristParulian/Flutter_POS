@@ -24,6 +24,26 @@ class FotoHelper {
     return tujuan.path;
   }
 
+  static Future<Directory> _folderLogo() async {
+    final documents = await getApplicationDocumentsDirectory();
+    final folder = Directory(p.join(documents.path, 'logo'));
+    if (!await folder.exists()) {
+      await folder.create(recursive: true);
+    }
+    return folder;
+  }
+
+  // Sama dengan simpanFotoProduk, khusus logo toko: file hasil pilih (di galeri/cache)
+  // disalin ke folder aplikasi supaya path-nya stabil dan aman disimpan di pengaturan.
+  static Future<String> simpanLogo(File sourceFile) async {
+    final folder = await _folderLogo();
+    final ekstensi = p.extension(sourceFile.path);
+    final namaFile = 'logo_${DateTime.now().millisecondsSinceEpoch}$ekstensi';
+    final tujuan = File(p.join(folder.path, namaFile));
+    await sourceFile.copy(tujuan.path);
+    return tujuan.path;
+  }
+
   // Hapus foto lama secara best-effort (tidak melempar error kalau path null atau file sudah tidak ada).
   static Future<void> hapusFotoJikaAda(String? path) async {
     if (path == null || path.isEmpty) return;

@@ -10,6 +10,7 @@ class PengaturanController extends ChangeNotifier {
   PengaturanToko get pengaturan => _pengaturan;
   String get namaToko => _pengaturan.namaToko;
   String get alamatToko => _pengaturan.alamatToko;
+  String? get logoPath => _pengaturan.logoPath;
 
   Future<void> muatPengaturan() async {
     final hasil = await DatabaseHelper.getPengaturan();
@@ -18,8 +19,13 @@ class PengaturanController extends ChangeNotifier {
   }
 
   Future<void> simpan(PengaturanToko baru) async {
-    await DatabaseHelper.simpanPengaturan(baru);
-    _pengaturan = baru;
-    notifyListeners();
+    try {
+      await DatabaseHelper.simpanPengaturan(baru);
+      _pengaturan = baru;
+      notifyListeners();
+    } catch (e) {
+      print('PengaturanController.simpan error: $e');
+      rethrow;
+    }
   }
 }
